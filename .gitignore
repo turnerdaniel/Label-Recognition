@@ -2,3 +2,9 @@
 *.asv
 .autosave
 *.mex
+
+#macOS Files
+.DS_Store
+.Trashes
+.fseventsd
+.Spotlight-V100
