@@ -1,0 +1,4 @@
+# MATLAB Autosave Files
+*.asv
+.autosave
+*.mex
