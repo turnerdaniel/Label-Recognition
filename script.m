@@ -8,7 +8,7 @@ clear; close all; clc;
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/image1 2 3.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image2.jpeg');
+I = imread('img/20 NOV(2325).jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -66,26 +66,31 @@ hold off;
 % %pixels (edge-enhanced MSER)
 % 
 % %Canny was much better at finding the edge of text 
-% edgeMask = edge(clahe, 'canny');
+% edgBW = edge(greySharp, 'canny');
+%
+% figure, imshow(edgeBW), title('Edge Image');
 % 
-% figure, imshow(edgeMask), title('Edge Image');
+
+%Initialise logical image with necessary dimensions
+mserBW = false(height, width);
+%Convert img co-ordinates to linear image indexes
+ind = sub2ind(size(mserBW), mserPixels(:,2), mserPixels(:,1));
+%assign 1/true to co-ordinates that match
+mserBW(ind) = true;
+
+figure, imshow(mserBW), title('logical MSER Image');
+
 % 
-% %Convert MSER pixels to binary image
-% mserBW = false(height, width);
-% %Convert img coords to linear image index
-% ind = sub2ind(size(mserBW), mserPixels(:,2), mserPixels(:,1));
-% mserBW(ind) = true;
+% Intersection = edgeBW & mserBW; 
 % 
-% Intersection = edgeMask & mserBW; 
-% 
-% %Use Sobel to get gradien and directions
-% [, gTheta] = imgradient(clahe);
+% %Use Sobel to get gradient and directions
+% [, gTheta] = imgradient(greySharp);
 % 
 % %Need to Grow Edges using direction of gradient
 % 
-% %You must specify if the text is light on dark background or vice versa
-% %gradientGrownEdgesMask = helperGrowEdges(Intersection, gTheta, 'LightTextOnDark');
-% %figure; imshow(gradientGrownEdgesMask); title('Edges grown along gradient direction')
+% %Apparently was a helperGrowEdges function in previous MATLAB. Purpose?
+% %grownEdges = helperGrowEdges(Intersection, gTheta, 'LightTextOnDark');
+% %figure; imshow(grownEdges); title('Edges grown along gradient direction')
 
 %% Remove Unlikely Candidates using Region Properties
 
@@ -94,8 +99,8 @@ hold off;
 % Aspect Ratio = mostly square
 % Extent = have very high or very low occupation of bounding box (O vs l)
 
-%bwareaopen = letters arent too big/too small
-
+%bwareaopen = letters are too big/too small (already done by MSER
+%maxAreaRange)
 %% Stroke Width Transform
 
 % helperStrokeWidth() - or could make own:
@@ -116,8 +121,8 @@ hold off;
 
 %% Perform Optical Character Recognition (OCR)
 
-ocrtxt = ocr(I);
-[ocrtxt.Text]
+detectedText = ocr(I);
+[detectedText.Text]
 
 %improve by creating a ocr characterSet to limit the possible characters to
 %letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
