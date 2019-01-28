@@ -2,11 +2,13 @@
 %Reset MATLAB environement
 clear; close all; clc;
 
-%% Read image & get statistics
+%% Read image
 
-%img = imread('img/20 NOV(1184).jpeg');
-%img = imread('img/image123.jpeg');
-I = imread('img/20 NOV(2325).jpeg');
+%imgs = ('img/20 NOV(1184)(2325).jpeg');
+%       ('img/25 MAR(2354).jpeg');
+%       ('img/image1 2 3.jpeg');
+%       ('img/370 378 988.jpeg');
+I = imread('img/image2.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -16,28 +18,45 @@ else
     grey = I;
 end
 
+%Get dimensions of image
 [height, width] = size(grey);
 
-%% Increase contrast/clarity?
+%% Image Pre-processing - Remove Noise, Increase Contrast & Sharpness
 
-%use imtophat to remove uneven illumination!
+%use imtophat to remove uneven illumination?
+%bothat looks good for finding dark text? Maybe not good for light text?
 
-%Perform Contrast Limited Adaptive Histogram Equalisation to help boost
-%contrast between text and BG
-clahe = adapthisteq(grey);
+%Perform Median Spatial Filtering to eliminate noise
+greyMed = medfilt2(grey, [5 5]);
 
-figure, subplot(1,2,1), imshow(grey), title('Greyscale Image');
-subplot(1,2,2), imshow(clahe), title('Contrast Limited Adaptive Hist EQ');
+%Perform Contrast Limited Adaptive Histogram Equalisation (CLAHE)
+greyClahe = adapthisteq(greyMed);
+
+%Use unsharp masking to increase image sharpness
+greySharp = imsharpen(greyClahe);
+
+%Dsiplay pre-processing effects
+figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
+subplot(2,2,2), imshow(greyMed), title('Median Filter');
+subplot(2,2,3), imshow(greyClahe), title('CLAHE');
+subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
 
 %% Maximally Stable Extremal Regions (MSER)
 
-%Maybe change thresholdDelta(0.8 - 4)?
-mserRegions = detectMSERFeatures(clahe, 'RegionAreaRange', [150 1500]);
+%Detect MSER Regions
+%RegionAreaRange = region min|max size
+%ThresholdDelta = Step size between intensity threshold
+%MaxAreaVariation = max area variation between regions
+mserRegions = detectMSERFeatures(greySharp, 'RegionAreaRange', [150 1500], ...
+'ThresholdDelta', 2, 'MaxAreaVariation', 0.25);
+
+%Concatenate pixel coordinates as Nx2 matrix
 mserPixels = vertcat(cell2mat(mserRegions.PixelList));
 
+%Display MSER Regions overlay on image
 figure, imshow(I);
 hold on;
-plot(mserRegions, 'showPixelList', true,'showEllipses', false);
+plot(mserRegions, 'showPixelList', true, 'showEllipses', false);
 title('MSER Regions');
 hold off;
 
@@ -101,8 +120,10 @@ ocrtxt = ocr(I);
 [ocrtxt.Text]
 
 %improve by creating a ocr characterSet to limit the possible characters to
-%letters/numbers found in dates (1234567890abcdefghij_lmnop_rstuv__y_)
+%letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
 
 %Change 'textLayout' to 'Block'/'line' may help
 %Perform morphology to help thin-out connected characters
 %Make sure letters are of adequate size (>20px)
+%Increase size of bbox/image
+
