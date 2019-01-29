@@ -5,9 +5,11 @@ clear; close all; clc;
 %TODO:
 %Contrast Stretching for pre-processing?
 %Implement Edge-enhanced MSER
+%   How does MSER work on binary image?    
 %Fine-tune Region property Segmentation
 %Implement SWT/Gabor/K-Means 
 %Improve post-processing
+%   Morph Character Thinning
 %Improve OCR
 %Implement date recognition
 
@@ -119,6 +121,8 @@ seSquare = strel('square', 3);
 
 openMserBW = imopen(mserBW, seSquare);
 
+%Morphological Character Thinning?
+
 figure, imshow(openMserBW), title('Opening Performed');
 
 %% Remove Unlikely Candidates using Region Properties
@@ -153,7 +157,8 @@ figure, imshow(areaMserBW), title('Filter images using text properties')
 
 %% Gabor Filters/K-Means Clustering
 
-%Additional research required...
+% Additional research required...
+% See proposal for K-Means method
 
 %% Detected Text
 
@@ -186,4 +191,8 @@ detectedText = ocr(I);
 
 % May have additional text recognised. eg. descriptions/food title
 % eliminate by looking for common data formats:
-% DD/MM/YYYY | DD.MM.YYYY | DD MMM | DD MMMMMMM, etc.
+% DD/MM/YYYY | DD.MM.YYYY | DD MMM or DD JUNE or DD JULY | DD MMMMMMM, etc.
+
+%% Print the Date/Save to File
+
+
