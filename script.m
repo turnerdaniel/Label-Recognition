@@ -192,6 +192,8 @@ detectedText = ocr(I);
 % May have additional text recognised. eg. descriptions/food title
 % eliminate by looking for common data formats:
 % DD/MM/YYYY | DD.MM.YYYY | DD MMM or DD JUNE or DD JULY | DD MMMMMMM, etc.
+%
+% Could also look for dates on y-axis of months of date formats...
 
 %% Print the Date/Save to File
 
