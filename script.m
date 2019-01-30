@@ -3,7 +3,6 @@
 clear; close all; clc;
 
 %TODO:
-%Contrast Stretching for pre-processing?
 %Implement Edge-enhanced MSER
 %   How does MSER work on binary image?    
 %Fine-tune Region property Segmentation
@@ -19,7 +18,7 @@ clear; close all; clc;
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/image1 2 3.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image2.jpeg');
+I = imread('img/image1.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -35,8 +34,6 @@ end
 %% Image Pre-processing - Remove Noise, Increase Contrast & Sharpness
 
 %use imtophat to remove uneven illumination?
-%bothat looks good for finding dark text? Maybe not good for light text?
-
 %deblurring?
 
 %Perform Linear Spatial Filtering to eliminate noise
@@ -47,24 +44,24 @@ greyWeiner = wiener2(grey, [3 3]);
 %Salt & Pepper noise not common on digital images
 %greyMed = medfilt2(grey, [3 3]);
 
-%Perform Contrast Limited Adaptive Histogram Equalisation (CLAHE)
-greyClahe2 = adapthisteq(greyWeiner);
+%Perform Linear Contrast Stretching (Could change Gamma?)
+greyContrastStretch = imadjust(greyWeiner);
 
-%other contrast boosters...
-greyAdapt = histeq(greyWeiner, 255);
-greyClahe = imadjust(greyWeiner);
-
-figure, subplot(2,2,1), imshow(greyClahe), title('CLAHE');
-subplot(2,2,2), imshow(greyAdapt), title('Hist EQ');
-%subplot(2,2,3), imshow(greyAdjust), title('Contrast Stretch');
+%Originally used CLAHE but that introduced more noise and increased size of
+%letters; leading to joining
+%greyClahe = adapthisteq(greyWeiner);
 
 %Use unsharp masking to increase image sharpness
-greySharp = imsharpen(greyClahe);
+greySharp = imsharpen(greyContrastStretch);
+
+%Laplacian/unsharp mask sharpening produce very similar results
+%Laplacian more noisy on some tests
+%Sobel/Prewitt inneffective
 
 %Dsiplay pre-processing effects
 figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
 subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
-subplot(2,2,3), imshow(greyClahe), title('CLAHE');
+subplot(2,2,3), imshow(greyContrastStretch), title('Contrast Stretching');
 subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
 
 %% Maximally Stable Extremal Regions (MSER)
@@ -193,6 +190,8 @@ figure, imshow(textROIImage), title('Text ROI');
 
 detectedText = ocr(I);
 [detectedText.Text]
+
+%could perform on MSERRegions or greyscale image?
 
 %improve by creating a ocr characterSet to limit the possible characters to
 %letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
