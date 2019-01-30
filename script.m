@@ -19,7 +19,7 @@ clear; close all; clc;
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/image1 2 3.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/988.jpeg');
+I = imread('img/image2.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -37,18 +37,33 @@ end
 %use imtophat to remove uneven illumination?
 %bothat looks good for finding dark text? Maybe not good for light text?
 
-%Perform Median Spatial Filtering to eliminate noise
-greyMed = medfilt2(grey, [5 5]);
+%deblurring?
+
+%Perform Linear Spatial Filtering to eliminate noise
+%Weiner removes gaussian & speckle noise while preserving edges by adapting
+%smoothing amount
+greyWeiner = wiener2(grey, [3 3]);
+
+%Salt & Pepper noise not common on digital images
+%greyMed = medfilt2(grey, [3 3]);
 
 %Perform Contrast Limited Adaptive Histogram Equalisation (CLAHE)
-greyClahe = adapthisteq(greyMed);
+greyClahe2 = adapthisteq(greyWeiner);
+
+%other contrast boosters...
+greyAdapt = histeq(greyWeiner, 255);
+greyClahe = imadjust(greyWeiner);
+
+figure, subplot(2,2,1), imshow(greyClahe), title('CLAHE');
+subplot(2,2,2), imshow(greyAdapt), title('Hist EQ');
+%subplot(2,2,3), imshow(greyAdjust), title('Contrast Stretch');
 
 %Use unsharp masking to increase image sharpness
 greySharp = imsharpen(greyClahe);
 
 %Dsiplay pre-processing effects
 figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
-subplot(2,2,2), imshow(greyMed), title('Median Filter');
+subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
 subplot(2,2,3), imshow(greyClahe), title('CLAHE');
 subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
 
@@ -59,7 +74,7 @@ subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
 %ThresholdDelta = Step size between intensity threshold (2)
 %MaxAreaVariation = max area variation between regions (0.25)
 mserRegions = detectMSERFeatures(greySharp, 'RegionAreaRange', [150 1500], ...
-'ThresholdDelta', 2, 'MaxAreaVariation', 0.25);
+'ThresholdDelta', 1.5, 'MaxAreaVariation', 0.25);
 
 %Concatenate pixel coordinates as Nx2 matrix
 mserPixels = vertcat(cell2mat(mserRegions.PixelList));
