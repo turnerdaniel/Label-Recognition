@@ -8,7 +8,7 @@ clear; close all; clc;
 %Fine-tune Region property Segmentation
 %Implement SWT/Gabor/K-Means 
 %Improve post-processing
-%   Morph Character Thinning
+%   Morph Character Thinning (bwmorph)
 %Improve OCR
 %Implement date recognition
 
@@ -133,7 +133,9 @@ seSquare = strel('square', 3);
 
 openMserBW = imopen(mserBW, seSquare);
 
-%Morphological Character Thinning?
+%Morphological Character Thinning? use bwmorph('thin')?
+
+%Watershed good for segmentation?
 
 figure, imshow(openMserBW), title('Opening Performed');
 
@@ -167,7 +169,7 @@ figure, imshow(areaMserBW), title('Filter images using text properties')
 % helperStrokeWidth() - or could make own... 
 % Pseudocode @ Mathworks and journals
 
-%% Gabor Filters/K-Means Clustering
+%% Gabor Filters/K-Means Clustering/Watershed
 
 % Additional research required...
 % See proposal for K-Means method
