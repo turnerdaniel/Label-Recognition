@@ -16,6 +16,7 @@ clear; close all; clc;
 
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
+%       ('img/05 DEC(1118).jpeg');
 %       ('img/image1 2 3.jpeg');
 %       ('img/370 378 988.jpeg');
 I = imread('img/image1.jpeg');
@@ -129,15 +130,51 @@ figure, imshow(mserBW), title('logical MSER Image');
 %more experimentation needed
 
 seSquare = strel('square', 3);
-%seDisk = strel('disk', 3);
+seDisk = strel('disk', 2);
 
 openMserBW = imopen(mserBW, seSquare);
 
 %Morphological Character Thinning? use bwmorph('thin')?
-
 %Watershed good for segmentation?
 
-figure, imshow(openMserBW), title('Opening Performed');
+%figure, imshow(openMserBW), title('Opening Performed');
+se = strel('square', 2);
+hitmissVert = [0; 1; 0];
+hitmissHor = [0 1 0];
+
+%Begin Opening
+erode = imerode(mserBW, seSquare);
+
+hm = bwhitmiss(erode, hitmissVert, ~hitmissVert);
+hm2 = bwhitmiss(erode, hitmissHor, ~hitmissHor);
+outHm = hm | hm2;
+hitMiss = erode - outHm;
+
+%open = imopen(hitmiss, se);
+dilate = imdilate(hitMiss, seSquare);
+%End opening
+
+figure, subplot(2,2,1), imshow(mserBW), title('original');
+subplot(2,2,2), imshow(erode), title('Erode');
+subplot(2,2,3), imshow(hitMiss), title('Hit/Miss image');
+subplot(2,2,4), imshow(dilate), title('Dilate');
+
+%Remove small blobs
+opened = bwareaopen(dilate, 100); 
+figure, imshow(opened), title('Area Open');
+
+%Close small holes
+% filled = imfill(opened2, 'holes');
+% figure, imshow(filled), title('All holes filled')
+% 
+% holes = filled & ~opened2;
+% figure, imshow(holes), title('Hole pixels identified')
+% 
+% bigholes = bwareaopen(holes, 5);
+% smallholes = holes & ~bigholes;
+% new = opened2 | smallholes;
+% figure, imshow(new), title('Small holes filled')
+
 
 %% Remove Unlikely Candidates using Region Properties
 
@@ -148,8 +185,8 @@ figure, imshow(openMserBW), title('Opening Performed');
 % bwareaopen = letters are too big/too small
 % Touching the border
 
-mserLabel = bwlabel(openMserBW);
-mserStats = regionprops(openMserBW, 'Area','Eccentricity', 'EulerNumber', 'Extent');
+mserLabel = bwlabel(dilate);%
+mserStats = regionprops(dilate, 'Area','Eccentricity', 'EulerNumber', 'Extent');
 
 %Max euler number = -1. However, is affected by noise so change to -3
 
@@ -160,7 +197,7 @@ mserStats = regionprops(openMserBW, 'Area','Eccentricity', 'EulerNumber', 'Exten
 % %Return pixels that satisfy the similar property criteria for the image
 % keptObjectsImage = ismember(mserLabel, keptObjects);
 
-areaMserBW = bwareaopen(openMserBW, 150);
+areaMserBW = bwareaopen(dilate, 100);%
 
 figure, imshow(areaMserBW), title('Filter images using text properties')
 
