@@ -3,12 +3,9 @@
 clear; close all; clc;
 
 %TODO:
-%Implement Edge-enhanced MSER
-%   How does MSER work on binary image?    
 %Fine-tune Region property Segmentation
 %Implement SWT/Gabor/K-Means 
-%Improve post-processing
-%   Morph Character Thinning (bwmorph)
+%Potentially Improve post-processing 
 %Improve OCR
 %Implement date recognition
 
@@ -16,10 +13,10 @@ clear; close all; clc;
 
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
-%       ('img/05 DEC(1118).jpeg');
-%       ('img/image1 2 3.jpeg');
+%       ('img/10 MAR(1820).jpeg');
+%       ('img/image1 2.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image2.jpeg');
+I = imread('img/image1.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -36,6 +33,7 @@ end
 
 %use imtophat to remove uneven illumination?
 %deblurring?
+%Orientation Correction?
 
 %Perform Linear Spatial Filtering to eliminate noise
 %Weiner removes gaussian & speckle noise while preserving edges by adapting
@@ -84,60 +82,25 @@ plot(mserRegions, 'showPixelList', true, 'showEllipses', false);
 title('MSER Regions');
 hold off;
 
-%% Edge Detection using Canny Edge Detector (edge-enhanced MSER)
-%Reduce blur from MSER is using edge detection to remove overlapping
-%pixels (edge-enhanced MSER)
-
-%------------------------------------
-%Currently unsure how to implement correctly!!!
-%------------------------------------
-
-%Canny is good at finding precise edges of text 
-edgeBW = edge(greySharp, 'canny');
-
-figure, imshow(edgeBW), title('Canny Edge Image');
-
 %Initialise logical image with necessary dimensions
 mserBW = false(height, width);
 %Convert img co-ordinates to linear image indexes
 ind = sub2ind(size(mserBW), mserPixels(:,2), mserPixels(:,1));
-%assign 1/true to co-ordinates that match
+%assign true to co-ordinates that match
 mserBW(ind) = true;
-
 figure, imshow(mserBW), title('logical MSER Image');
 
-% 
-% Need to grow edges along gradient direction to help remove noise?
-%
-% For the time being, subtract edgeBW to remove noise around letters
-
-%subtractedMserBW = mserBW - edgeBW;
-
-%figure, imshow(subtractedMserBW), title('Subtracted Image');
-
-% Intersection = edgeBW & mserBW; 
-% 
-% %Use Sobel to get gradient and directions
-% [, gAngle] = imgradient(greySharp);
-% 
-% %Need to Grow Edges using direction of gradient
-% 
-% %Apparently was a helperGrowEdges function in previous MATLAB. Purpose?
-% %grownEdges = helperGrowEdges(Intersection, gAngle, 'LightTextOnDark');
-% %figure; imshow(grownEdges); title('Edges grown along gradient direction')
+%% Edge Detection using Canny Edge Detector 
+%Canny is good at finding precise edges of text 
+edgeBW = edge(greySharp, 'canny');
+figure, imshow(edgeBW), title('Canny Edge Image');
 
 %% Image Post-Processing - Opening, 
-%more experimentation needed
+%Watershed may be good?
+%bwmorph for thinning?
 
 seSquare = strel('square', 3);
-seDisk = strel('disk', 2);
-
-openMserBW = imopen(mserBW, seSquare);
-
-%Morphological Character Thinning? use bwmorph('thin')?
-%Watershed good for segmentation?
-
-%figure, imshow(openMserBW), title('Opening Performed');
+%seDiamond = strel('diamond', 1);
 se = strel('square', 2);
 hitmissVert = [0; 1; 0];
 hitmissHor = [0 1 0];
@@ -145,27 +108,26 @@ hitmissHor = [0 1 0];
 %Begin Opening
 erode = imerode(mserBW, seSquare);
 
+%Morpholgical Hit or Miss
 hm = bwhitmiss(erode, hitmissVert, ~hitmissVert);
 hm2 = bwhitmiss(erode, hitmissHor, ~hitmissHor);
 outHm = hm | hm2;
 hitMiss = erode - outHm;
 
-%open = imopen(hitmiss, se);
+%Maybe adjust to small se?
 dilate = imdilate(hitMiss, seSquare);
 %End opening
 
 figure, subplot(2,2,1), imshow(mserBW), title('original');
-subplot(2,2,2), imshow(erode), title('Erode');
-subplot(2,2,3), imshow(hitMiss), title('Hit/Miss image');
-subplot(2,2,4), imshow(dilate), title('Dilate');
+subplot(2,2,2), imshow(erode), title('Eroded');
+subplot(2,2,3), imshow(hitMiss), title('Hit or Miss Performed');
+subplot(2,2,4), imshow(dilate), title('Dilated');
 
 %Remove small blobs
-opened = bwareaopen(dilate, 100); 
-figure, imshow(opened), title('Area Open');
-
+clearNoise = bwareaopen(dilate, 100); 
 %Close small holes by inverting image between foreground and background
-noHoles = ~bwareaopen(~opened, 3);
-figure, imshow(noHoles), title('No holes');
+clearSmallHoles = ~bwareaopen(~clearNoise, 3);
+figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
 %% Remove Unlikely Candidates using Region Properties
 
@@ -176,8 +138,10 @@ figure, imshow(noHoles), title('No holes');
 % bwareaopen = letters are too big/too small
 % Touching the border
 
-mserLabel = bwlabel(dilate);%
-mserStats = regionprops(dilate, 'Area','Eccentricity', 'EulerNumber', 'Extent');
+mserLabel = bwlabel(clearSmallHoles);
+mserStats = regionprops(clearSmallHoles, 'Area','Eccentricity', 'EulerNumber', 'Extent');
+
+%Touching border first
 
 %Max euler number = -1. However, is affected by noise so change to -3
 
@@ -188,9 +152,10 @@ mserStats = regionprops(dilate, 'Area','Eccentricity', 'EulerNumber', 'Extent');
 % %Return pixels that satisfy the similar property criteria for the image
 % keptObjectsImage = ismember(mserLabel, keptObjects);
 
-areaMserBW = bwareaopen(dilate, 100);%
+%TEMPORARY UNTIL SECTION DONE
+removeRegionProperties = clearSmallHoles;
 
-figure, imshow(areaMserBW), title('Filter images using text properties')
+figure, imshow(removeRegionProperties), title('Filter images using text properties')
 
 %% Stroke Width Transform
 
@@ -205,7 +170,7 @@ figure, imshow(areaMserBW), title('Filter images using text properties')
 %% Detected Text
 
 %Display potential text regions
-stats = regionprops(areaMserBW, 'BoundingBox');
+stats = regionprops(removeRegionProperties, 'BoundingBox');
 textROI = vertcat(stats.BoundingBox);
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
 figure, imshow(textROIImage), title('Text ROI');
