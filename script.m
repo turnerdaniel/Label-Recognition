@@ -19,7 +19,7 @@ clear; close all; clc;
 %       ('img/05 DEC(1118).jpeg');
 %       ('img/image1 2 3.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image1.jpeg');
+I = imread('img/image2.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -163,18 +163,9 @@ subplot(2,2,4), imshow(dilate), title('Dilate');
 opened = bwareaopen(dilate, 100); 
 figure, imshow(opened), title('Area Open');
 
-%Close small holes
-% filled = imfill(opened2, 'holes');
-% figure, imshow(filled), title('All holes filled')
-% 
-% holes = filled & ~opened2;
-% figure, imshow(holes), title('Hole pixels identified')
-% 
-% bigholes = bwareaopen(holes, 5);
-% smallholes = holes & ~bigholes;
-% new = opened2 | smallholes;
-% figure, imshow(new), title('Small holes filled')
-
+%Close small holes by inverting image between foreground and background
+noHoles = ~bwareaopen(~opened, 3);
+figure, imshow(noHoles), title('No holes');
 
 %% Remove Unlikely Candidates using Region Properties
 
