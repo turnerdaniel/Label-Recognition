@@ -195,6 +195,9 @@ detectedText = ocr(I);
 %Perform morphology to help thin-out connected characters
 %Make sure letters are of adequate size (>20px)
 %Use ROI for OCR
+%Look at automatic thrshold methods (Gaussian) or threshold for each blob
+%May need to get the OCR support package (visionSupportPackages) or 
+%download .traineddata from GitHub for best accuracy
 
 %% Perform Text Matching using Regex
 
