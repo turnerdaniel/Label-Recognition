@@ -16,7 +16,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/370.jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -135,7 +135,7 @@ figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 % Euler Number = Don't have many holes (max 2 | B)
 % Aspect Ratio = mostly square (vertical & horizontal)
 % Extent = have very high or very low occupation of bounding box (O vs l)
-% Touching the border
+
 
 mserLabel = bwlabel(clearSmallHoles);
 mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
@@ -146,23 +146,19 @@ bbWidths = bBoxes(:, 3)';
 bbHeights = bBoxes(:, 4)';
 aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
 
-figure, imshow(clearSmallHoles), title('original');
-
-%Max euler = -1. However, is affected by noise so change to -2
-validEulerNo = [mserStats.EulerNumber] >= -2;
-
+%Max euler = -1. However, is affected by noise so change to -3
+validEulerNo = [mserStats.EulerNumber] >= -3;
+%Remove blobs that are lines (eg. barcodes)
 validEccentricity = [mserStats.Eccentricity] < 0.99;
-figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
-
 validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
-figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
-
+%The ratio between the region and the convex hull
 validSolidity = [mserStats.Solidity] > 0.5;
-figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
-
+%Make use of vertical and horizontal aspect ratio to ensure shape are
+%roughly square = 1
 validAspectRatio = aspectRatio < 2.5;
-figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
 
+%Attempted to use compactness and circulairty but would remove important
+%details and thresholds had to be reduced to the point of useless-ness.
 
 %Find the index of all objects that have valid properties
 keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
@@ -170,10 +166,18 @@ keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
 %Return pixels that satisfy the similar property criteria for the image
 keptObjectsImage = ismember(mserLabel, keptObjects);
 
+% figure, imshow(clearSmallHoles), title('original');
+% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
+% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
+% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
+% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
+% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
+
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
 
+% https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 % totalObjects = size(mserStats, 1);
 % validStrokeWidth = false(1, totalObjects);
 % 
@@ -215,7 +219,10 @@ figure, imshow(textROIImage), title('Text ROI');
 %2 = peform morphological operation on text to grow/join letters. Then
 %group into bounding boxes
 
-%% Perform Optical Character Recognition (OCR)
+%Maybe grow only horizontally? Dates aren't vertical.
+%Rule-based? grow by own size, etc.
+
+%% Perform Optical Character Recognition (OCR) & Preperation
 
 detectedText = ocr(greySharp, textROI);
 [detectedText.Text]
