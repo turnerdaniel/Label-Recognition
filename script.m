@@ -16,7 +16,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image1.jpeg');
+I = imread('img/370.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -133,31 +133,65 @@ figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
 % Eccentricity = similar to a line segment (1)
 % Euler Number = Don't have many holes (max 2 | B)
-% Aspect Ratio = mostly square
+% Aspect Ratio = mostly square (vertical & horizontal)
 % Extent = have very high or very low occupation of bounding box (O vs l)
-% bwareaopen = letters are too big/too small
 % Touching the border
 
 mserLabel = bwlabel(clearSmallHoles);
-mserStats = regionprops(clearSmallHoles, 'Area','Eccentricity', 'EulerNumber', 'Extent');
+mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
+    'EulerNumber', 'Extent', 'Solidity');
 
-%Touching border first
+bBoxes = vertcat(mserStats.BoundingBox);
+bbWidths = bBoxes(:, 3)';
+bbHeights = bBoxes(:, 4)';
+aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
 
-%Max euler number = -1. However, is affected by noise so change to -3
+figure, imshow(clearSmallHoles), title('original');
 
-% valid_ = [mserStats._] > 0;
+%Max euler = -1. However, is affected by noise so change to -2
+validEulerNo = [mserStats.EulerNumber] >= -2;
 
-% %Find the index of all objects that have valid properties
-% keptObjects = find(valid_);
-% %Return pixels that satisfy the similar property criteria for the image
-% keptObjectsImage = ismember(mserLabel, keptObjects);
+validEccentricity = [mserStats.Eccentricity] < 0.99;
+figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
 
-%TEMPORARY UNTIL SECTION DONE
-removeRegionProperties = clearSmallHoles;
+validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
+figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
 
-figure, imshow(removeRegionProperties), title('Filter images using text properties')
+validSolidity = [mserStats.Solidity] > 0.5;
+figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
+
+validAspectRatio = aspectRatio < 2.5;
+figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
+
+
+%Find the index of all objects that have valid properties
+keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
+    validSolidity & validAspectRatio);
+%Return pixels that satisfy the similar property criteria for the image
+keptObjectsImage = ismember(mserLabel, keptObjects);
+
+figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
+
+% totalObjects = size(mserStats, 1);
+% validStrokeWidth = false(1, totalObjects);
+% 
+% variationThresh = 0.4;%???
+% 
+% for i = 1:totalObjects
+%     
+%     cropImage = imcrop(keptObjectsImage, mserStats(i).BoundingBox);
+%     regionImage = padarray(cropImage, [1 1]);
+%     
+%     distanceImage = bwdist(~regionImage);
+%     skeletonImage = bwmorph(regionImage, 'thin', inf);
+%     
+%     strokeWidths = distanceImage(skeletonImage);
+%     variation = std(strokeWidths)/mean(strokeWidths);
+%     
+%     validStrokeWidth(i) = variation > variationThresh;
+% end
 
 % helperStrokeWidth() - or could make own... 
 % Pseudocode @ Mathworks and journals
@@ -170,7 +204,7 @@ figure, imshow(removeRegionProperties), title('Filter images using text properti
 %% Detected Text
 
 %Display potential text regions
-stats = regionprops(removeRegionProperties, 'BoundingBox');
+stats = regionprops(keptObjectsImage, 'BoundingBox');
 textROI = vertcat(stats.BoundingBox);
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
 figure, imshow(textROIImage), title('Text ROI');
@@ -183,10 +217,10 @@ figure, imshow(textROIImage), title('Text ROI');
 
 %% Perform Optical Character Recognition (OCR)
 
-detectedText = ocr(I);
+detectedText = ocr(greySharp, textROI);
 [detectedText.Text]
 
-%could perform on MSERRegions or greyscale image?
+%could perform on multiple images (MSERRegions/greyscale/adaptiveThreshold)?
 
 %improve by creating a ocr characterSet to limit the possible characters to
 %letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
@@ -206,6 +240,7 @@ detectedText = ocr(I);
 % DD/MM/YYYY | DD.MM.YYYY | DD MMM or DD JUNE or DD JULY | DD MMMMMMM, etc.
 %
 % Could also look for dates on y-axis of months of date formats...
+% If not found, could repeat ocr with new threshold?
 
 %% Print the Date/Save to File
 
