@@ -1,0 +1,11 @@
+High delta = less regions
+High variation = more regions
+
+Original (find all, some split regions) = 1.5 0.25
+
+Mostly good = 2.5 0.15
+Attempt1 (Bad for img1, split regions in 370/378) = 1.5, 0.15
+Attempt2 (Good for most, slightly bad for img2) = 1.75, 0.2 
+					       = 2.5, 0.2
+
+Best = 2.5, 0.2
