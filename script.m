@@ -14,9 +14,9 @@ clear; close all; clc;
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2.jpeg');
+%       ('img/image1 2 3 4.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image2.jpeg');
+I = imread('img/image3.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -31,7 +31,7 @@ end
 
 %% Image Pre-processing - Remove Noise, Increase Contrast & Sharpness
 
-%use imtophat to remove uneven illumination?
+%use imbothat w/ large strel to remove uneven illumination?
 %deblurring?
 %Orientation Correction?
 
@@ -58,6 +58,7 @@ greySharp = imsharpen(greyContrastStretch);
 %Sobel/Prewitt inneffective
 
 %Dsiplay pre-processing effects
+
 figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
 subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
 subplot(2,2,3), imshow(greyContrastStretch), title('Contrast Stretching');
@@ -69,8 +70,8 @@ subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
 %RegionAreaRange = region min|max size (30 14000)
 %ThresholdDelta = Step size between intensity threshold (2)
 %MaxAreaVariation = max area variation between regions (0.25)
-mserRegions = detectMSERFeatures(greySharp, 'RegionAreaRange', [150 1500], ...
-'ThresholdDelta', 1.5, 'MaxAreaVariation', 0.25);
+mserRegions = detectMSERFeatures(greySharp, 'RegionAreaRange', ... 
+    [150 1500], 'ThresholdDelta', 2.5, 'MaxAreaVariation', 0.2);
 
 %Concatenate pixel coordinates as Nx2 matrix
 mserPixels = vertcat(cell2mat(mserRegions.PixelList));
@@ -136,7 +137,6 @@ figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 % Aspect Ratio = mostly square (vertical & horizontal)
 % Extent = have very high or very low occupation of bounding box (O vs l)
 
-
 mserLabel = bwlabel(clearSmallHoles);
 mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
     'EulerNumber', 'Extent', 'Solidity');
@@ -150,6 +150,7 @@ aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
 validEulerNo = [mserStats.EulerNumber] >= -3;
 %Remove blobs that are lines (eg. barcodes)
 validEccentricity = [mserStats.Eccentricity] < 0.99;
+%Letters should have normal distribution of Area to BBox
 validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
 %The ratio between the region and the convex hull
 validSolidity = [mserStats.Solidity] > 0.5;
@@ -176,8 +177,10 @@ keptObjectsImage = ismember(mserLabel, keptObjects);
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
+%Needs investigation and improvement
+%Issue with letters being filled!
 
-mserStats = regionprops(keptObjectsImage, 'BoundingBox');
+mserStats = regionprops(keptObjectsImage, 'Image', 'BoundingBox');
 mserLabel = bwlabel(keptObjectsImage);
 
 % https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
@@ -185,15 +188,39 @@ totalObjects = size(mserStats, 1);
 validStrokeWidths = false(1, totalObjects);
 variation = zeros(1, totalObjects);
 
-variationThresh = 0.5;%???
+variationThresh = 0.45;
 
 for i = 1:totalObjects
     
-    cropImage = imcrop(keptObjectsImage, mserStats(i).BoundingBox);
-    regionImage = padarray(cropImage, [1 1]);
+    %Correct for innacurate BBox
+    imageBBox = mserStats(i).BoundingBox - [0, 0, 1, 1];
+    image = mserStats(i).Image;
     
-    distanceImage = bwdist(~regionImage);
-    skeletonImage = bwmorph(regionImage, 'thin', inf);
+    greyImage = imcrop(greySharp, imageBBox);
+    %Could check twice for dark/light text?
+    binaryImage = (imbinarize(greyImage));
+    
+%     Region1 = sum(image(:) == 1);
+%     Region0 = sum(image(:) == 0);
+%     Thresh1 = sum(binaryImage(:) == 1);
+%     Thresh0 = sum(binaryImage(:) == 0);
+%     
+%     %if no of 1 pixels is less than 0's, switch
+%       if (Thresh1 > Thresh0)
+%           binaryImage = ~binaryImage;
+%       end
+    
+    keepImage = image & binaryImage;
+    paddedImage = padarray(keepImage, [1 1]);
+    
+    figure, subplot(2,2,1), imshow(image), title('RegionProps Image');
+    subplot(2,2,2), imshow(binaryImage), title('Thresh Binary');
+    subplot(2,2,3), imshow(edgeImage), title('Canny of Thresh Grey');
+    
+    %Distance Transform
+    distanceImage = bwdist(~paddedImage);
+    %Thinning
+    skeletonImage = bwmorph(paddedImage, 'thin', inf);
     
     strokeWidths = distanceImage(skeletonImage);
     variation(i) = std(strokeWidths)/mean(strokeWidths);
@@ -211,10 +238,13 @@ figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 % helperStrokeWidth() - or could make own... 
 % Pseudocode @ Mathworks and journals
 
-%Could use thresholded cropped area
-%Get MSER regions within the mask. Then use MSER conncomp output
-%Difference between crop and stats.Image? does image remove other objects?
-%Enhanced MSER?
+% Stats.Image better than crop since it removes other nearby/objects
+
+%Could use thresholded cropped area - difficult to get correct!
+%Get MSER regions within the ROI bbox. Then get largest?
+%Need to use MSER cc regions from the start
+%Or could just iterate through for this step?
+%Setup exception for cirles?
 
 %% Gabor Filters/K-Means Clustering/Watershed
 
