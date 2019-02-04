@@ -16,7 +16,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/988.jpeg');
+I = imread('img/image2.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -177,28 +177,44 @@ figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
 
+mserStats = regionprops(keptObjectsImage, 'BoundingBox');
+mserLabel = bwlabel(keptObjectsImage);
+
 % https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
-% totalObjects = size(mserStats, 1);
-% validStrokeWidth = false(1, totalObjects);
-% 
-% variationThresh = 0.4;%???
-% 
-% for i = 1:totalObjects
-%     
-%     cropImage = imcrop(keptObjectsImage, mserStats(i).BoundingBox);
-%     regionImage = padarray(cropImage, [1 1]);
-%     
-%     distanceImage = bwdist(~regionImage);
-%     skeletonImage = bwmorph(regionImage, 'thin', inf);
-%     
-%     strokeWidths = distanceImage(skeletonImage);
-%     variation = std(strokeWidths)/mean(strokeWidths);
-%     
-%     validStrokeWidth(i) = variation > variationThresh;
-% end
+totalObjects = size(mserStats, 1);
+validStrokeWidths = false(1, totalObjects);
+variation = zeros(1, totalObjects);
+
+variationThresh = 0.5;%???
+
+for i = 1:totalObjects
+    
+    cropImage = imcrop(keptObjectsImage, mserStats(i).BoundingBox);
+    regionImage = padarray(cropImage, [1 1]);
+    
+    distanceImage = bwdist(~regionImage);
+    skeletonImage = bwmorph(regionImage, 'thin', inf);
+    
+    strokeWidths = distanceImage(skeletonImage);
+    variation(i) = std(strokeWidths)/mean(strokeWidths);
+    
+    validStrokeWidths(i) = variation(i) < variationThresh;
+end
+
+keptSWT = find(validStrokeWidths);
+
+keptSWTImage = ismember(mserLabel, keptSWT);
+
+figure, imshow(keptSWTImage), title('Filter images using SWT');
+figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 
 % helperStrokeWidth() - or could make own... 
 % Pseudocode @ Mathworks and journals
+
+%Could use thresholded cropped area
+%Get MSER regions within the mask. Then use MSER conncomp output
+%Difference between crop and stats.Image? does image remove other objects?
+%Enhanced MSER?
 
 %% Gabor Filters/K-Means Clustering/Watershed
 
