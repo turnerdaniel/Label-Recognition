@@ -5,9 +5,10 @@ clear; close all; clc;
 %TODO:
 %Fine-tune Region property Segmentation
 %Implement SWT/Gabor/K-Means 
-%Potentially Improve post-processing 
+%Improve post-processing 
 %Improve OCR
 %Implement date recognition
+%Further false-positive reductions
 
 %% Read image
 
@@ -16,7 +17,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/370.jpeg');
+I = imread('img/378.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -177,8 +178,8 @@ keptObjectsImage = ismember(mserLabel, keptObjects);
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
-%Needs investigation and improvement
-%Issue with letters being filled!
+%Can implement alternative SWT algorithms
+%Can attempt to use MserCC to remove filled text
 
 mserStats = regionprops(keptObjectsImage, 'Image', 'BoundingBox');
 mserLabel = bwlabel(keptObjectsImage);
@@ -186,18 +187,22 @@ mserLabel = bwlabel(keptObjectsImage);
 % https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 totalObjects = size(mserStats, 1);
 validStrokeWidths = false(1, totalObjects);
-variationMin = zeros(1, totalObjects);
+variation = zeros(1, totalObjects);
 thisVariation = double(zeros(1, 2));
 
+%Test changes to this
 variationThresh = 0.4;
 
-%Maybe do CC analysis (only 1 object? least objects?)
+%Attempted to use minimun variaton to eliminate holes in the middle of
+%letters to permit accurate SWT. However, meant that SWT wasn't recorded
+%correctly due to NaN and 0 being present in std(SWT)/mean(SWT)
 
-%can optimise by taking out of a loop
+tic
+%can optimise by taking first section out of loop
 for i = 1:totalObjects
     
     %Get BBox and image
-    %Correct for slightly large BBox
+    %Correct for slightly large BBox (check accuracy)
     imageBBox = mserStats(i).BoundingBox - [0, 0, 1, 1];
     image = mserStats(i).Image;
     
@@ -208,40 +213,53 @@ for i = 1:totalObjects
     %Problem is that text can be light/dark (apply twice?)
     binaryImage = imbinarize(greyImage);  
     
-    for j = 1:2
-        %Keep only areas of image that match (remove the centre of O,A,B, etc.)
-        if (j == 1)
-            keepImage = image & binaryImage;
-        else
-            keepImage = image & ~binaryImage;
-        end
-        
-        %Pad the image to avoid boundary effects
-        paddedImage = padarray(keepImage, [1 1]);
-        
-        %Distance Transform
-        distanceTransform = bwdist(~paddedImage);
-        %Thinning
-        skeleton = bwmorph(paddedImage, 'thin', inf);
-        
-        %Create stroke width image from distanceTransform and skeleton
-        strokeWidth = distanceTransform(skeleton);
-        %Calculate the variation in stroke widths
-        thisVariation(j) = std(strokeWidth)/mean(strokeWidth);
+    %Perform CC analysis to find most likely text (BoW, DoL text)
+    %Each letter should have the lowest number of non-zero components
+    ccReg = bwconncomp(image & binaryImage);
+    ccInv = bwconncomp(image & ~binaryImage);
+    
+    %Optimise if statements
+    if ccReg.NumObjects == 0 && ccInv.NumObjects ~= 0
+        %Use regular image
+        keepImage = image & ~binaryImage;
+    elseif ccInv.NumObjects == 0 && ccReg.NumObjects ~= 0
+        %Use regular image
+        keepImage = image & binaryImage;
+    elseif ccReg.NumObjects < ccInv.NumObjects
+        %Use regular image
+        keepImage = image & binaryImage;
+    elseif ccInv.NumObjects < ccReg.NumObjects
+        %Use regular image
+        keepImage = image & ~binaryImage;
+    else
+        %use regular image
+        keepImage = image & binaryImage;
     end
     
-    %Keep lowest variances that are not NaN (0/0)
-    variationMin(i) = min(thisVariation, [], 'omitnan');
+    %Pad the image to avoid boundary effects
+    paddedImage = padarray(keepImage, [1 1]);
+    
+    %figure, imshow(paddedImage);
         
-    validStrokeWidths(i) = variationMin(i) < variationThresh;
+    %Distance Transform
+    distanceTransform = bwdist(~paddedImage);
+    %Thinning
+    skeleton = bwmorph(paddedImage, 'thin', inf);
+        
+    %Create stroke width image from distanceTransform and skeleton
+    strokeWidth = distanceTransform(skeleton);
+    %Calculate the variation in stroke widths
+    variation(i) = std(strokeWidth)/mean(strokeWidth);
+        
+    validStrokeWidths(i) = variation(i) < variationThresh;
 end
+loopTime = toc
 
 keptSWT = find(validStrokeWidths);
-
 keptSWTImage = ismember(mserLabel, keptSWT);
 
 figure, imshow(keptSWTImage), title('Filter images using SWT');
-figure, plot(variationMin), yline(variationThresh); title('SW Variation in Image');
+figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 
 % helperStrokeWidth() - or could make own... 
 % Pseudocode @ Mathworks and journals
@@ -262,7 +280,7 @@ figure, plot(variationMin), yline(variationThresh); title('SW Variation in Image
 %% Detected Text
 
 %Display potential text regions
-stats = regionprops(keptObjectsImage, 'BoundingBox');
+stats = regionprops(keptSWTImage, 'BoundingBox');
 textROI = vertcat(stats.BoundingBox);
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
 figure, imshow(textROIImage), title('Text ROI');
