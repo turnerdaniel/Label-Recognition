@@ -16,7 +16,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image3.jpeg');
+I = imread('img/370.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -94,7 +94,7 @@ figure, imshow(mserBW), title('logical MSER Image');
 %% Edge Detection using Canny Edge Detector 
 %Canny is good at finding precise edges of text 
 edgeBW = edge(greySharp, 'canny');
-figure, imshow(edgeBW), title('Canny Edge Image');
+%figure, imshow(edgeBW), title('Canny Edge Image');
 
 %% Image Post-Processing - Opening, 
 %Watershed may be good?
@@ -186,46 +186,54 @@ mserLabel = bwlabel(keptObjectsImage);
 % https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 totalObjects = size(mserStats, 1);
 validStrokeWidths = false(1, totalObjects);
-variation = zeros(1, totalObjects);
+variationMin = zeros(1, totalObjects);
+thisVariation = double(zeros(1, 2));
 
-variationThresh = 0.45;
+variationThresh = 0.4;
 
+%Maybe do CC analysis (only 1 object? least objects?)
+
+%can optimise by taking out of a loop
 for i = 1:totalObjects
     
-    %Correct for innacurate BBox
+    %Get BBox and image
+    %Correct for slightly large BBox
     imageBBox = mserStats(i).BoundingBox - [0, 0, 1, 1];
     image = mserStats(i).Image;
     
+    %Crop the greyscale image
     greyImage = imcrop(greySharp, imageBBox);
-    %Could check twice for dark/light text?
-    binaryImage = (imbinarize(greyImage));
     
-%     Region1 = sum(image(:) == 1);
-%     Region0 = sum(image(:) == 0);
-%     Thresh1 = sum(binaryImage(:) == 1);
-%     Thresh0 = sum(binaryImage(:) == 0);
-%     
-%     %if no of 1 pixels is less than 0's, switch
-%       if (Thresh1 > Thresh0)
-%           binaryImage = ~binaryImage;
-%       end
+    %theshold the cropped greyscale image using Otsu
+    %Problem is that text can be light/dark (apply twice?)
+    binaryImage = imbinarize(greyImage);  
     
-    keepImage = image & binaryImage;
-    paddedImage = padarray(keepImage, [1 1]);
+    for j = 1:2
+        %Keep only areas of image that match (remove the centre of O,A,B, etc.)
+        if (j == 1)
+            keepImage = image & binaryImage;
+        else
+            keepImage = image & ~binaryImage;
+        end
+        
+        %Pad the image to avoid boundary effects
+        paddedImage = padarray(keepImage, [1 1]);
+        
+        %Distance Transform
+        distanceTransform = bwdist(~paddedImage);
+        %Thinning
+        skeleton = bwmorph(paddedImage, 'thin', inf);
+        
+        %Create stroke width image from distanceTransform and skeleton
+        strokeWidth = distanceTransform(skeleton);
+        %Calculate the variation in stroke widths
+        thisVariation(j) = std(strokeWidth)/mean(strokeWidth);
+    end
     
-    figure, subplot(2,2,1), imshow(image), title('RegionProps Image');
-    subplot(2,2,2), imshow(binaryImage), title('Thresh Binary');
-    subplot(2,2,3), imshow(edgeImage), title('Canny of Thresh Grey');
-    
-    %Distance Transform
-    distanceImage = bwdist(~paddedImage);
-    %Thinning
-    skeletonImage = bwmorph(paddedImage, 'thin', inf);
-    
-    strokeWidths = distanceImage(skeletonImage);
-    variation(i) = std(strokeWidths)/mean(strokeWidths);
-    
-    validStrokeWidths(i) = variation(i) < variationThresh;
+    %Keep lowest variances that are not NaN (0/0)
+    variationMin(i) = min(thisVariation, [], 'omitnan');
+        
+    validStrokeWidths(i) = variationMin(i) < variationThresh;
 end
 
 keptSWT = find(validStrokeWidths);
@@ -233,7 +241,7 @@ keptSWT = find(validStrokeWidths);
 keptSWTImage = ismember(mserLabel, keptSWT);
 
 figure, imshow(keptSWTImage), title('Filter images using SWT');
-figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
+figure, plot(variationMin), yline(variationThresh); title('SW Variation in Image');
 
 % helperStrokeWidth() - or could make own... 
 % Pseudocode @ Mathworks and journals
