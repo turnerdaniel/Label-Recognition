@@ -5,15 +5,15 @@ clear; clc;
 
 %% Read image
 
-%imgs = ('img/20 NOV(1184)(2325).jpeg');
-%       ('img/25 MAR(2354).jpeg');
-%       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4.jpeg');
-%       ('img/370 378 988.jpeg');
+%imgs = ('../img/20 NOV(1184)(2325).jpeg');
+%       ('../img/25 MAR(2354).jpeg');
+%       ('../img/10 MAR(1820).jpeg');
+%       ('../img/image1 2 3 4.jpeg');
+%       ('../img/370 378 988.jpeg');
 
-%I = imread('img/image1.jpeg');
-%I = imread('img/988.jpeg');
-I = imread('img/20 NOV(1184).jpeg');
+%I = imread('../img/image1.jpeg');
+%I = imread('../img/988.jpeg');
+I = imread('../img/20 NOV(1184).jpeg');
 
 Delta = 2.5;
 Var = 0.2;
