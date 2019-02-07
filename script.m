@@ -5,10 +5,17 @@ clear; close all; clc;
 %TODO:
 %Fine-tune Region property Segmentation
 %Implement SWT/Gabor/K-Means 
-%Improve post-processing 
+%Improve post-processing (may change to just opening?) 
 %Improve OCR
 %Implement date recognition
 %Further false-positive reductions
+
+%Saturday:
+%Check that SWT works
+%Optimise if statements & loop
+%Check other SWT implementations
+%Attempt using MSERRegions for above
+%Alternative/Dedicated step for removing interior filled objects?
 
 %% Read image
 
@@ -17,7 +24,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/378.jpeg');
+I = imread('img/370.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -55,10 +62,10 @@ greyContrastStretch = imadjust(greyWeiner);
 greySharp = imsharpen(greyContrastStretch);
 
 %Laplacian/unsharp mask sharpening produce very similar results
-%Laplacian more noisy on some tests
-%Sobel/Prewitt inneffective
+%Laplacian more noisy on some tests but neither of them have clear
+%advantages
 
-%Dsiplay pre-processing effects
+%Display pre-processing effects
 
 figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
 subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
@@ -96,6 +103,9 @@ figure, imshow(mserBW), title('logical MSER Image');
 %Canny is good at finding precise edges of text 
 edgeBW = edge(greySharp, 'canny');
 %figure, imshow(edgeBW), title('Canny Edge Image');
+
+%Could just use classic intersection with MSER:
+%https://ieeexplore.ieee.org/document/7760054
 
 %% Image Post-Processing - Opening, 
 %Watershed may be good?
@@ -264,15 +274,11 @@ figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 % helperStrokeWidth() - or could make own... 
 % Pseudocode @ Mathworks and journals
 
-% Stats.Image better than crop since it removes other nearby/objects
+%Get MSER regions within the ROI bbox?
+%Need to use MSER cc regions from the start / could just do for this step?
+%Set Exterior pixels to -1 (not 0/1) then maximise the number of 1's
 
-%Could use thresholded cropped area - difficult to get correct!
-%Get MSER regions within the ROI bbox. Then get largest?
-%Need to use MSER cc regions from the start
-%Or could just iterate through for this step?
-%Setup exception for cirles?
-
-%% Gabor Filters/K-Means Clustering/Watershed
+%% Gabor Filters/K-Means Clustering/Watershed/Heatmap
 
 % Additional research required...
 % See proposal for K-Means method
@@ -293,6 +299,7 @@ figure, imshow(textROIImage), title('Text ROI');
 
 %Maybe grow only horizontally? Dates aren't vertical.
 %Rule-based? grow by own size, etc.
+%Rotate to minimiise BBox size & get correct orienttion
 
 %% Perform Optical Character Recognition (OCR) & Preperation
 
@@ -311,6 +318,9 @@ detectedText = ocr(greySharp, textROI);
 %Look at automatic thrshold methods (Gaussian) or threshold for each blob
 %May need to get the OCR support package (visionSupportPackages) or 
 %download .traineddata from GitHub for best accuracy
+%Could use MSER Regions or regions with least connected components
+%Need to consider rotation (Hough transform? regionprops.Orientation?)
+%OCR w/ Temporal Fusion (takes OCR across a range of different frames)
 
 %% Perform Text Matching using Regex
 
