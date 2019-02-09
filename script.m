@@ -10,12 +10,11 @@ clear; close all; clc;
 %Implement date recognition
 %Further false-positive reductions
 
-%Saturday:
-%Check that SWT works
+%Sat Notes:
+%The skeleton implementation is good if referenced (MATLAB & journal) & effecient
+%Re-arrange the MSER enhancement to make more sense???
 %Optimise if statements & loop
 %Check other SWT implementations
-%Attempt using MSERRegions for above
-%Alternative/Dedicated step for removing interior filled objects?
 
 %% Read image
 
@@ -24,7 +23,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/378.jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -150,10 +149,10 @@ validEccentricity = [mserStats.Eccentricity] < 0.99;
 %Letters should have normal distribution of Area to BBox
 validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
 %The ratio between the region and the convex hull
-validSolidity = [mserStats.Solidity] > 0.5;
+validSolidity = [mserStats.Solidity] > 0.4;
 %Make use of vertical and horizontal aspect ratio to ensure shape are
 %roughly square = 1
-validAspectRatio = aspectRatio < 2.5;
+validAspectRatio = aspectRatio < 2.65;
 
 %Attempted to use compactness and circulairty but would remove important
 %details and thresholds had to be reduced to the point of useless-ness.
@@ -164,16 +163,17 @@ keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
 %Return pixels that satisfy the similar property criteria for the image
 keptObjectsImage = ismember(mserLabel, keptObjects);
 
-% figure, imshow(clearSmallHoles), title('original');
-% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
-% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
-% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
-% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
-% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
+%figure, imshow(clearSmallHoles), title('original');
+%figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
+%figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
+%figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
+%figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
+%figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
 
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
-%% Binary Image Enhancement
+%% Binary Image Enhancement for SWT
+%Performed in preperation of SWT and OCR
 
 mserStats = regionprops(keptObjectsImage, 'Image', 'BoundingBox');
 totalObjects = size(mserStats, 1);
@@ -232,15 +232,20 @@ for i = 1:totalObjects
 end
 loopTime = toc
 
-figure, imshow(CCadjustedImage), title('CC Adjustment');
+%Remove small blobs
+clearCCNoise = bwareaopen(CCadjustedImage, 3); 
+%Close small holes by inverting image between foreground and background
+clearSmallCCHoles = ~bwareaopen(~clearCCNoise, 3);
+
+figure, imshow(clearSmallCCHoles), title('CC Adjustment');
 
 %% Stroke Width Transform
 %Can attempt to use MserCC to remove filled text
 %See what changes to threshold do
 %Can implement alternative SWT algorithms
 
-mserStats = regionprops(CCadjustedImage, 'Image');
-mserLabel = bwlabel(CCadjustedImage);
+mserStats = regionprops(clearSmallCCHoles, 'Image');
+mserLabel = bwlabel(clearSmallCCHoles);
 
 % https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 totalObjects = size(mserStats, 1);
