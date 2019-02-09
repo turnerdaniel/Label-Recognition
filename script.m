@@ -127,55 +127,9 @@ clearNoise = bwareaopen(opened, 100);
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
-%% Remove Unlikely Candidates using Region Properties
-
-% Eccentricity = similar to a line segment (1)
-% Euler Number = Don't have many holes (max 2 | B)
-% Aspect Ratio = mostly square (vertical & horizontal)
-% Extent = have very high or very low occupation of bounding box (O vs l)
-
-mserLabel = bwlabel(clearSmallHoles);
-mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
-    'EulerNumber', 'Extent', 'Solidity');
-
-bBoxes = vertcat(mserStats.BoundingBox);
-bbWidths = bBoxes(:, 3)';
-bbHeights = bBoxes(:, 4)';
-aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
-
-%Max euler = -1. However, is affected by noise so change to -3
-validEulerNo = [mserStats.EulerNumber] >= -3;
-%Remove blobs that are lines (eg. barcodes)
-validEccentricity = [mserStats.Eccentricity] < 0.99;
-%Letters should have normal distribution of Area to BBox
-validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
-%The ratio between the region and the convex hull
-validSolidity = [mserStats.Solidity] > 0.5;
-%Make use of vertical and horizontal aspect ratio to ensure shape are
-%roughly square = 1
-validAspectRatio = aspectRatio < 2.5;
-
-%Attempted to use compactness and circulairty but would remove important
-%details and thresholds had to be reduced to the point of useless-ness.
-
-%Find the index of all objects that have valid properties
-keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
-    validSolidity & validAspectRatio);
-%Return pixels that satisfy the similar property criteria for the image
-keptObjectsImage = ismember(mserLabel, keptObjects);
-
-% figure, imshow(clearSmallHoles), title('original');
-% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
-% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
-% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
-% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
-% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
-
-figure, imshow(keptObjectsImage), title('Filter images using text properties')
-
 %% Binary Image Enhancement
 
-mserStats = regionprops(keptObjectsImage, 'Image', 'BoundingBox');
+mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
 totalObjects = size(mserStats, 1);
 CCadjustedImage = false(height, width);
 
@@ -234,13 +188,59 @@ loopTime = toc
 
 figure, imshow(CCadjustedImage), title('CC Adjustment');
 
+%% Remove Unlikely Candidates using Region Properties
+
+% Eccentricity = similar to a line segment (1)
+% Euler Number = Don't have many holes (max 2 | B)
+% Aspect Ratio = mostly square (vertical & horizontal)
+% Extent = have very high or very low occupation of bounding box (O vs l)
+
+mserLabel = bwlabel(CCadjustedImage);
+mserStats = regionprops(CCadjustedImage, 'BoundingBox', 'Eccentricity', ...
+    'EulerNumber', 'Extent', 'Solidity');
+
+bBoxes = vertcat(mserStats.BoundingBox);
+bbWidths = bBoxes(:, 3)';
+bbHeights = bBoxes(:, 4)';
+aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
+
+%Max euler = -1. However, is affected by noise so change to -3
+validEulerNo = [mserStats.EulerNumber] >= -3;
+%Remove blobs that are lines (eg. barcodes)
+validEccentricity = [mserStats.Eccentricity] < 0.99;
+%Letters should have normal distribution of Area to BBox
+validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
+%The ratio between the region and the convex hull
+validSolidity = [mserStats.Solidity] > 0.5;
+%Make use of vertical and horizontal aspect ratio to ensure shape are
+%roughly square = 1
+validAspectRatio = aspectRatio < 2.5;
+
+%Attempted to use compactness and circulairty but would remove important
+%details and thresholds had to be reduced to the point of useless-ness.
+
+%Find the index of all objects that have valid properties
+keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
+    validSolidity & validAspectRatio);
+%Return pixels that satisfy the similar property criteria for the image
+keptObjectsImage = ismember(mserLabel, keptObjects);
+
+% figure, imshow(clearSmallHoles), title('original');
+% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
+% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
+% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
+% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
+% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
+
+figure, imshow(keptObjectsImage), title('Filter images using text properties')
+
 %% Stroke Width Transform
 %Can attempt to use MserCC to remove filled text
 %See what changes to threshold do
 %Can implement alternative SWT algorithms
 
-mserStats = regionprops(CCadjustedImage, 'Image');
-mserLabel = bwlabel(CCadjustedImage);
+mserStats = regionprops(keptObjectsImage, 'Image');
+mserLabel = bwlabel(keptObjectsImage);
 
 % https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 totalObjects = size(mserStats, 1);
