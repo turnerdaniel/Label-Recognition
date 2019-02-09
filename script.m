@@ -24,7 +24,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image6.jpeg');
+I = imread('img/378.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -113,30 +113,16 @@ figure, imshow(mserBW), title('logical MSER Image');
 
 seSquare = strel('square', 3);
 %seDiamond = strel('diamond', 1);
-se = strel('square', 2);
-hitmissVert = [0; 1; 0];
-hitmissHor = [0 1 0];
 
-%Begin Opening
-erode = imerode(mserBW, seSquare);
-
-%Morpholgical Hit or Miss
-hm = bwhitmiss(erode, hitmissVert, ~hitmissVert);
-hm2 = bwhitmiss(erode, hitmissHor, ~hitmissHor);
-outHm = hm | hm2;
-hitMiss = erode - outHm;
-
+%Opening to remove small joins
 %Maybe adjust to small se?
-dilate = imdilate(hitMiss, seSquare);
-%End opening
+opened = imopen(mserBW, seSquare);
 
-figure, subplot(2,2,1), imshow(mserBW), title('original');
-subplot(2,2,2), imshow(erode), title('Eroded');
-subplot(2,2,3), imshow(hitMiss), title('Hit or Miss Performed');
-subplot(2,2,4), imshow(dilate), title('Dilated');
+figure, subplot(1,2,1), imshow(mserBW), title('original');
+subplot(1,2,2), imshow(opened), title('Opened');
 
 %Remove small blobs
-clearNoise = bwareaopen(dilate, 100); 
+clearNoise = bwareaopen(opened, 100); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
@@ -249,8 +235,9 @@ loopTime = toc
 figure, imshow(CCadjustedImage), title('CC Adjustment');
 
 %% Stroke Width Transform
-%Can implement alternative SWT algorithms
 %Can attempt to use MserCC to remove filled text
+%See what changes to threshold do
+%Can implement alternative SWT algorithms
 
 mserStats = regionprops(CCadjustedImage, 'Image');
 mserLabel = bwlabel(CCadjustedImage);
@@ -259,7 +246,6 @@ mserLabel = bwlabel(CCadjustedImage);
 totalObjects = size(mserStats, 1);
 variation = zeros(1, totalObjects);
 
-%Test changes to this
 variationThresh = 0.4;
 
 %Attempted to use minimun variaton to eliminate holes in the middle of
@@ -304,6 +290,8 @@ figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 
 % Additional research required...
 % See proposal for K-Means method
+
+%% Bounding Boxes
 
 %% Detected Text
 
