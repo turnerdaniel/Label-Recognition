@@ -5,17 +5,22 @@ clear; close all; clc;
 %TODO:
 %Fine-tune Region property Segmentation
 %Implement SWT/Gabor/K-Means 
-%Improve post-processing (may change to just opening?) 
 %Improve OCR
 %Implement date recognition
 %Further false-positive reductions
+%Variable Renaming
 
-%Saturday:
-%Check that SWT works
+%Saturday Notes:
+%The skeleton implementation is good if referenced (MATLAB & journal) & effecient
 %Optimise if statements & loop
-%Check other SWT implementations
-%Attempt using MSERRegions for above
-%Alternative/Dedicated step for removing interior filled objects?
+%Investigate SWT threshold
+%The CC method does have slight disadvanatges (sometimes wrong, thinning,
+%   more difficult to destinguish from non-text, interfere w/ barcode)
+
+%Sunday:
+%Test CC
+%Do above
+%Implement BBox joining w/ rules
 
 %% Read image
 
@@ -24,7 +29,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/988.jpeg');
+I = imread('img/20 NOV(2325).jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -66,7 +71,6 @@ greySharp = imsharpen(greyContrastStretch);
 %advantages
 
 %Display pre-processing effects
-
 figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
 subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
 subplot(2,2,3), imshow(greyContrastStretch), title('Contrast Stretching');
@@ -100,10 +104,6 @@ mserBW(ind) = true;
 figure, imshow(mserBW), title('logical MSER Image');
 
 %% Edge Detection using Canny Edge Detector 
-%Canny is good at finding precise edges of text 
-%edgeBW = edge(greySharp, 'canny');
-%figure, imshow(edgeBW), title('Canny Edge Image');
-
 %Could just use classic intersection with MSER:
 %https://ieeexplore.ieee.org/document/7760054
 
@@ -220,7 +220,7 @@ validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
 validSolidity = [mserStats.Solidity] > 0.4;
 %Make use of vertical and horizontal aspect ratio to ensure shape are
 %roughly square = 1
-validAspectRatio = aspectRatio < 2.75;
+validAspectRatio = aspectRatio < 3;
 
 % figure, subplot(3,2,1), plot([mserStats.EulerNumber]), title('Euler');
 % subplot(3,2,2), plot([mserStats.Eccentricity]), title('Eccentricity');
@@ -237,19 +237,17 @@ keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
 %Return pixels that satisfy the similar property criteria for the image
 keptObjectsImage = ismember(mserLabel, keptObjects);
 
-% figure, imshow(clearSmallHoles), title('original');
-% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
-% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
-% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
-% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
-% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
+figure, imshow(clearSmallHoles), title('original');
+figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
+figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
+figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
+figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
+figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
 
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
-%Can attempt to use MserCC to remove filled text
 %See what changes to threshold do
-%Can implement alternative SWT algorithms
 
 mserStats = regionprops(keptObjectsImage, 'Image');
 mserLabel = bwlabel(keptObjectsImage);
@@ -263,6 +261,9 @@ variationThresh = 0.4;
 %Attempted to use minimun variaton to eliminate holes in the middle of
 %letters to permit accurate SWT. However, meant that SWT wasn't recorded
 %correctly due to NaN and 0 being present in std(SWT)/mean(SWT)
+
+%The CCEMSER was needed to ensure that letters weren't filled & therfore
+%SWT would be more accurate/less false positives
 
 tic
 for i = 1:totalObjects
@@ -303,8 +304,6 @@ figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 % Additional research required...
 % See proposal for K-Means method
 
-%% Bounding Boxes
-
 %% Detected Text
 
 %Display potential text regions
@@ -323,6 +322,8 @@ figure, imshow(textROIImage), title('Text ROI');
 %Maybe grow only horizontally? Dates aren't vertical.
 %Rule-based? grow by own size, etc.
 %Rotate to minimiise BBox size & get correct orienttion
+%Get rotation that minimise height of image (top/bottom pixel)
+%One BBox by self isn't worth
 
 %% Perform Optical Character Recognition (OCR) & Preperation
 
@@ -343,6 +344,7 @@ detectedText = ocr(greySharp, textROI);
 %download .traineddata from GitHub for best accuracy
 %Could use MSER Regions or regions with least connected components
 %Need to consider rotation (Hough transform? regionprops.Orientation?)
+%Rotate several times and take highest confidence
 %OCR w/ Temporal Fusion (takes OCR across a range of different frames)
 
 %% Perform Text Matching using Regex
