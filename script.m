@@ -22,9 +22,9 @@ clear; close all; clc;
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4.jpeg');
+%       ('img/image1 2 3 4 5 6.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/370.jpeg');
+I = imread('img/image6.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -101,7 +101,7 @@ figure, imshow(mserBW), title('logical MSER Image');
 
 %% Edge Detection using Canny Edge Detector 
 %Canny is good at finding precise edges of text 
-edgeBW = edge(greySharp, 'canny');
+%edgeBW = edge(greySharp, 'canny');
 %figure, imshow(edgeBW), title('Canny Edge Image');
 
 %Could just use classic intersection with MSER:
@@ -187,33 +187,17 @@ keptObjectsImage = ismember(mserLabel, keptObjects);
 
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
-%% Stroke Width Transform
-%Can implement alternative SWT algorithms
-%Can attempt to use MserCC to remove filled text
+%% Binary Image Enhancement
 
 mserStats = regionprops(keptObjectsImage, 'Image', 'BoundingBox');
-mserLabel = bwlabel(keptObjectsImage);
-
-% https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 totalObjects = size(mserStats, 1);
-validStrokeWidths = false(1, totalObjects);
-variation = zeros(1, totalObjects);
-thisVariation = double(zeros(1, 2));
-
-%Test changes to this
-variationThresh = 0.4;
-
-%Attempted to use minimun variaton to eliminate holes in the middle of
-%letters to permit accurate SWT. However, meant that SWT wasn't recorded
-%correctly due to NaN and 0 being present in std(SWT)/mean(SWT)
+CCadjustedImage = false(height, width);
 
 tic
-%can optimise by taking first section out of loop
 for i = 1:totalObjects
-    
     %Get BBox and image
-    %Correct for slightly large BBox (check accuracy)
-    imageBBox = mserStats(i).BoundingBox - [0, 0, 1, 1];
+    %Correct for slightly large BBox
+    imageBBox = ceil(mserStats(i).BoundingBox - [0, 0, 1, 1]);
     image = mserStats(i).Image;
     
     %Crop the greyscale image
@@ -228,6 +212,10 @@ for i = 1:totalObjects
     ccReg = bwconncomp(image & binaryImage);
     ccInv = bwconncomp(image & ~binaryImage);
     
+    %Concatenate list to handle multiple objects in image
+    ccRegSize = size(cat(1, ccReg.PixelIdxList{:}), 1);
+    ccInvSize = size(cat(1, ccInv.PixelIdxList{:}), 1);
+    
     %Optimise if statements
     if ccReg.NumObjects == 0 && ccInv.NumObjects ~= 0
         %Use regular image
@@ -241,30 +229,64 @@ for i = 1:totalObjects
     elseif ccInv.NumObjects < ccReg.NumObjects
         %Use regular image
         keepImage = image & ~binaryImage;
+    elseif ccInv.NumObjects == ccReg.NumObjects
+        if ccRegSize < ccInvSize 
+            keepImage = image & ~binaryImage;
+        elseif ccInvSize < ccRegSize
+            keepImage = image & binaryImage;
+        end
     else
-        %use regular image
+        %use regular image as last resort
         keepImage = image & binaryImage;
     end
     
-    %Pad the image to avoid boundary effects
-    paddedImage = padarray(keepImage, [1 1]);
+    %Replace existing image locations with new enhanced images
+    CCadjustedImage(imageBBox(2):imageBBox(2) + imageBBox(4), ...
+        imageBBox(1):imageBBox(1) + imageBBox(3)) = keepImage;    
+end
+loopTime = toc
+
+figure, imshow(CCadjustedImage), title('CC Adjustment');
+
+%% Stroke Width Transform
+%Can implement alternative SWT algorithms
+%Can attempt to use MserCC to remove filled text
+
+mserStats = regionprops(CCadjustedImage, 'Image');
+mserLabel = bwlabel(CCadjustedImage);
+
+% https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
+totalObjects = size(mserStats, 1);
+variation = zeros(1, totalObjects);
+
+%Test changes to this
+variationThresh = 0.4;
+
+%Attempted to use minimun variaton to eliminate holes in the middle of
+%letters to permit accurate SWT. However, meant that SWT wasn't recorded
+%correctly due to NaN and 0 being present in std(SWT)/mean(SWT)
+
+tic
+for i = 1:totalObjects
     
-    %figure, imshow(paddedImage);
+    croppedImage = mserStats(i).Image;
+       
+    %Pad the image to avoid boundary effects
+    paddedImage = padarray(croppedImage, [1 1]);
         
     %Distance Transform
     distanceTransform = bwdist(~paddedImage);
     %Thinning
-    skeleton = bwmorph(paddedImage, 'thin', inf);
+    skeletonTransform = bwmorph(paddedImage, 'thin', inf);
         
     %Create stroke width image from distanceTransform and skeleton
-    strokeWidth = distanceTransform(skeleton);
+    strokeWidth = distanceTransform(skeletonTransform);
     %Calculate the variation in stroke widths
     variation(i) = std(strokeWidth)/mean(strokeWidth);
-        
-    validStrokeWidths(i) = variation(i) < variationThresh;
 end
 loopTime = toc
 
+validStrokeWidths = variation < variationThresh;
 keptSWT = find(validStrokeWidths);
 keptSWTImage = ismember(mserLabel, keptSWT);
 
@@ -289,6 +311,7 @@ figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 stats = regionprops(keptSWTImage, 'BoundingBox');
 textROI = vertcat(stats.BoundingBox);
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
+
 figure, imshow(textROIImage), title('Text ROI');
 
 %1 = calculate bounding boxes and expand by small amount. 
