@@ -10,18 +10,19 @@ clear; close all; clc;
 %Implement date recognition
 %Further false-positive reductions
 
-%Sat Notes:
-%The skeleton implementation is good if referenced (MATLAB & journal) & effecient
-%Re-arrange the MSER enhancement to make more sense???
+%Saturday:
+%Check that SWT works
 %Optimise if statements & loop
 %Check other SWT implementations
+%Attempt using MSERRegions for above
+%Alternative/Dedicated step for removing interior filled objects?
 
 %% Read image
 
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4 5 6.jpeg');
+%       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
 I = imread('img/988.jpeg');
 
@@ -126,63 +127,16 @@ clearNoise = bwareaopen(opened, 100);
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
-%% Remove Unlikely Candidates using Region Properties
+%% Connected Component Enhanced MSER (CCEMSER)
 
-% Eccentricity = similar to a line segment (1)
-% Euler Number = Don't have many holes (max 2 | B)
-% Aspect Ratio = mostly square (vertical & horizontal)
-% Extent = have very high or very low occupation of bounding box (O vs l)
-
-mserLabel = bwlabel(clearSmallHoles);
-mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
-    'EulerNumber', 'Extent', 'Solidity');
-
-bBoxes = vertcat(mserStats.BoundingBox);
-bbWidths = bBoxes(:, 3)';
-bbHeights = bBoxes(:, 4)';
-aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
-
-%Max euler = -1. However, is affected by noise so change to -3
-validEulerNo = [mserStats.EulerNumber] >= -3;
-%Remove blobs that are lines (eg. barcodes)
-validEccentricity = [mserStats.Eccentricity] < 0.99;
-%Letters should have normal distribution of Area to BBox
-validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
-%The ratio between the region and the convex hull
-validSolidity = [mserStats.Solidity] > 0.4;
-%Make use of vertical and horizontal aspect ratio to ensure shape are
-%roughly square = 1
-validAspectRatio = aspectRatio < 2.65;
-
-%Attempted to use compactness and circulairty but would remove important
-%details and thresholds had to be reduced to the point of useless-ness.
-
-%Find the index of all objects that have valid properties
-keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
-    validSolidity & validAspectRatio);
-%Return pixels that satisfy the similar property criteria for the image
-keptObjectsImage = ismember(mserLabel, keptObjects);
-
-%figure, imshow(clearSmallHoles), title('original');
-%figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
-%figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
-%figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
-%figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
-%figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
-
-figure, imshow(keptObjectsImage), title('Filter images using text properties')
-
-%% Binary Image Enhancement for SWT
-%Performed in preperation of SWT and OCR
-
-mserStats = regionprops(keptObjectsImage, 'Image', 'BoundingBox');
+mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
 totalObjects = size(mserStats, 1);
 CCadjustedImage = false(height, width);
 
 tic
 for i = 1:totalObjects
     %Get BBox and image
-    %Correct for slightly large BBox
+    %Correct for slightly large BBox and round floating values
     imageBBox = ceil(mserStats(i).BoundingBox - [0, 0, 1, 1]);
     image = mserStats(i).Image;
     
@@ -232,20 +186,73 @@ for i = 1:totalObjects
 end
 loopTime = toc
 
-%Remove small blobs
-clearCCNoise = bwareaopen(CCadjustedImage, 3); 
-%Close small holes by inverting image between foreground and background
-clearSmallCCHoles = ~bwareaopen(~clearCCNoise, 3);
+figure, imshow(CCadjustedImage), title('CC Adjustment');
 
-figure, imshow(clearSmallCCHoles), title('CC Adjustment');
+%Remove small blobs
+clearNoise = bwareaopen(CCadjustedImage, 20); 
+%Close small holes by inverting image between foreground and background
+clearSmallHoles = ~bwareaopen(~clearNoise, 3);
+figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
+
+%% Remove Unlikely Candidates using Region Properties
+
+% Eccentricity = similar to a line segment (1)
+% Euler Number = Don't have many holes (max 2 | B)
+% Aspect Ratio = mostly square (vertical & horizontal)
+% Extent = have very high or very low occupation of bounding box (O vs l)
+
+mserLabel = bwlabel(clearSmallHoles);
+mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
+    'EulerNumber', 'Extent', 'Solidity');
+
+bBoxes = vertcat(mserStats.BoundingBox);
+bbWidths = bBoxes(:, 3)';
+bbHeights = bBoxes(:, 4)';
+aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
+
+%Max euler = -1. However, is affected by noise so change to -2
+validEulerNo = [mserStats.EulerNumber] >= -2;
+%Remove blobs that are perfect lines (eg. barcodes)
+validEccentricity = [mserStats.Eccentricity] < 0.99;
+%Letters should have normal distribution of Area to BBox
+validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
+%The ratio between the region and the convex hull
+validSolidity = [mserStats.Solidity] > 0.4;
+%Make use of vertical and horizontal aspect ratio to ensure shape are
+%roughly square = 1
+validAspectRatio = aspectRatio < 2.75;
+
+% figure, subplot(3,2,1), plot([mserStats.EulerNumber]), title('Euler');
+% subplot(3,2,2), plot([mserStats.Eccentricity]), title('Eccentricity');
+% subplot(3,2,3), plot([mserStats.Extent]), title('Extent');
+% subplot(3,2,4), plot([mserStats.Solidity]), title('Solidity');
+% subplot(3,2,5), plot(aspectRatio), title('Aspect');
+
+%Attempted to use compactness and circulairty but would remove important
+%details and thresholds had to be reduced to the point of useless-ness.
+
+%Find the index of all objects that have valid properties
+keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
+    validSolidity & validAspectRatio);
+%Return pixels that satisfy the similar property criteria for the image
+keptObjectsImage = ismember(mserLabel, keptObjects);
+
+% figure, imshow(clearSmallHoles), title('original');
+% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
+% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
+% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
+% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
+% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
+
+figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
 %Can attempt to use MserCC to remove filled text
 %See what changes to threshold do
 %Can implement alternative SWT algorithms
 
-mserStats = regionprops(clearSmallCCHoles, 'Image');
-mserLabel = bwlabel(clearSmallCCHoles);
+mserStats = regionprops(keptObjectsImage, 'Image');
+mserLabel = bwlabel(keptObjectsImage);
 
 % https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 totalObjects = size(mserStats, 1);
