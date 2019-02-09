@@ -189,7 +189,7 @@ loopTime = toc
 figure, imshow(CCadjustedImage), title('CC Adjustment');
 
 %Remove small blobs
-clearNoise = bwareaopen(CCadjustedImage, 100); 
+clearNoise = bwareaopen(CCadjustedImage, 5); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
