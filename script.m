@@ -18,7 +18,7 @@ clear; close all; clc;
 %   more difficult to destinguish from non-text, interfere w/ barcode)
 
 %Sunday:
-%Test CC
+%Test CC - check aspect ratio/soldity parameters
 %Do above
 %Implement BBox joining w/ rules
 
