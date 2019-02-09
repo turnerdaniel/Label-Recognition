@@ -22,9 +22,9 @@ clear; close all; clc;
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4 5 6.jpeg');
+%       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/378.jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -127,7 +127,7 @@ clearNoise = bwareaopen(opened, 100);
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
-%% Binary Image Enhancement
+%% Connected Component Enhanced MSER (CCEMSER)
 
 mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
 totalObjects = size(mserStats, 1);
@@ -189,7 +189,7 @@ loopTime = toc
 figure, imshow(CCadjustedImage), title('CC Adjustment');
 
 %Remove small blobs
-clearNoise = bwareaopen(CCadjustedImage, 5); 
+clearNoise = bwareaopen(CCadjustedImage, 20); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
@@ -210,17 +210,23 @@ bbWidths = bBoxes(:, 3)';
 bbHeights = bBoxes(:, 4)';
 aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
 
-%Max euler = -1. However, is affected by noise so change to -3
-validEulerNo = [mserStats.EulerNumber] >= -3;
-%Remove blobs that are lines (eg. barcodes)
+%Max euler = -1. However, is affected by noise so change to -2
+validEulerNo = [mserStats.EulerNumber] >= -2;
+%Remove blobs that are perfect lines (eg. barcodes)
 validEccentricity = [mserStats.Eccentricity] < 0.99;
 %Letters should have normal distribution of Area to BBox
 validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
 %The ratio between the region and the convex hull
-validSolidity = [mserStats.Solidity] > 0.5;
+validSolidity = [mserStats.Solidity] > 0.4;
 %Make use of vertical and horizontal aspect ratio to ensure shape are
 %roughly square = 1
-validAspectRatio = aspectRatio < 2.5;
+validAspectRatio = aspectRatio < 2.75;
+
+% figure, subplot(3,2,1), plot([mserStats.EulerNumber]), title('Euler');
+% subplot(3,2,2), plot([mserStats.Eccentricity]), title('Eccentricity');
+% subplot(3,2,3), plot([mserStats.Extent]), title('Extent');
+% subplot(3,2,4), plot([mserStats.Solidity]), title('Solidity');
+% subplot(3,2,5), plot(aspectRatio), title('Aspect');
 
 %Attempted to use compactness and circulairty but would remove important
 %details and thresholds had to be reduced to the point of useless-ness.
