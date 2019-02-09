@@ -136,7 +136,7 @@ CCadjustedImage = false(height, width);
 tic
 for i = 1:totalObjects
     %Get BBox and image
-    %Correct for slightly large BBox
+    %Correct for slightly large BBox and round floating values
     imageBBox = ceil(mserStats(i).BoundingBox - [0, 0, 1, 1]);
     image = mserStats(i).Image;
     
@@ -188,6 +188,12 @@ loopTime = toc
 
 figure, imshow(CCadjustedImage), title('CC Adjustment');
 
+%Remove small blobs
+clearNoise = bwareaopen(CCadjustedImage, 100); 
+%Close small holes by inverting image between foreground and background
+clearSmallHoles = ~bwareaopen(~clearNoise, 3);
+figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
+
 %% Remove Unlikely Candidates using Region Properties
 
 % Eccentricity = similar to a line segment (1)
@@ -195,8 +201,8 @@ figure, imshow(CCadjustedImage), title('CC Adjustment');
 % Aspect Ratio = mostly square (vertical & horizontal)
 % Extent = have very high or very low occupation of bounding box (O vs l)
 
-mserLabel = bwlabel(CCadjustedImage);
-mserStats = regionprops(CCadjustedImage, 'BoundingBox', 'Eccentricity', ...
+mserLabel = bwlabel(clearSmallHoles);
+mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
     'EulerNumber', 'Extent', 'Solidity');
 
 bBoxes = vertcat(mserStats.BoundingBox);
