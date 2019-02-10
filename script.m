@@ -32,15 +32,15 @@ clear; close all; clc;
 %The CC method does have slight disadvanatges (sometimes wrong, thinning,
 %   more difficult to destinguish from non-text, interfere w/ barcode)
 
-%Sunday:
-%Test CC - check aspect ratio/soldity parameters for 20 NOV(2325)
-%clean up vars
-%Investigate SWT threshold
-%Justify the citations in report
+%Sunday Notes:
+%Ensure the citations are jusitified in the report
 
 %Monday:
+%Test CC - create & check (horz/vert) aspect ratio/soldity parameters for 20 NOV(2325)
 %Test rule-based bbox joining
 %expand BBox's vertically to ensure space around edge
+%Group together text on same y axis and close x axis
+%Investigate SWT threshold
 %Optimise if statements & loop
 %Do OCR
 
@@ -51,7 +51,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/20 NOV(2325).jpeg');
+I = imread('img/image3.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -223,7 +223,7 @@ mserLabel = bwlabel(clearSmallHoles);
 mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
     'EulerNumber', 'Extent', 'Solidity');
 
-%Calculte the maximum aspect ratio
+%Calculte the maximum horizontal/vertical aspect ratio
 bBoxes = vertcat(mserStats.BoundingBox);
 bbWidths = bBoxes(:, 3)';
 bbHeights = bBoxes(:, 4)';
@@ -268,13 +268,13 @@ figure, imshow(keptObjectsImage), title('Filter images using text properties')
 %% Stroke Width Transform
 %See what changes to threshold do
 
-mserStats = regionprops(keptObjectsImage, 'Image');
-mserLabel = bwlabel(keptObjectsImage);
+swtStats = regionprops(keptObjectsImage, 'Image');
+swtLabel = bwlabel(keptObjectsImage);
 
-totalObjects = size(mserStats, 1);
-variation = zeros(1, totalObjects);
+totalObjects = size(swtStats, 1);
+swtVariation = zeros(1, totalObjects);
 
-variationThresh = 0.4;
+swtVariationThresh = 0.4;
 
 %Attempted to use minimun variaton to eliminate holes in the middle of
 %letters to permit accurate SWT. However, meant that SWT wasn't recorded
@@ -286,30 +286,30 @@ variationThresh = 0.4;
 tic
 for i = 1:totalObjects
     
-    croppedImage = mserStats(i).Image;
+    object = swtStats(i).Image;
        
     %Pad the image to avoid boundary effects
-    paddedImage = padarray(croppedImage, [1 1]);
+    paddedObject = padarray(object, [1 1]);
         
     %Distance Transform
-    distanceTransform = bwdist(~paddedImage);
-    %Thinning
-    skeletonTransform = bwmorph(paddedImage, 'thin', inf);
+    distanceTransform = bwdist(~paddedObject);
+    %Thinning until Skeleton
+    skeletonTransform = bwmorph(paddedObject, 'thin', inf);
         
-    %Create stroke width image from distanceTransform and skeleton
-    %Change to .*
-    strokeWidth = distanceTransform(skeletonTransform);
+    %Retrieve the stroke width values for the image
+    swtWidths = distanceTransform(skeletonTransform);
+    
     %Calculate the variation in stroke widths
-    variation(i) = std(strokeWidth)/mean(strokeWidth);
+    swtVariation(i) = std(swtWidths)/mean(swtWidths);
 end
 loopTime = toc
 
-validStrokeWidths = variation < variationThresh;
+validStrokeWidths = swtVariation < swtVariationThresh;
 keptSWT = find(validStrokeWidths);
-keptSWTImage = ismember(mserLabel, keptSWT);
+keptSWTImage = ismember(swtLabel, keptSWT);
 
 figure, imshow(keptSWTImage), title('Filter images using SWT');
-figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
+figure, plot(swtVariation), yline(swtVariationThresh); title('SW Variation in Image');
 
 %Get MSER regions within the ROI bbox?
 %Need to use MSER cc regions from the start / could just do for this step?
@@ -317,8 +317,8 @@ figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 %% Rule-Based Candidate Text Grouping
 
 %Display potential text regions
-stats = regionprops(keptSWTImage, 'BoundingBox');
-textROI = vertcat(stats.BoundingBox);
+textStats = regionprops(keptSWTImage, 'BoundingBox');
+textROI = vertcat(textStats.BoundingBox);
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
 figure, imshow(textROIImage), title('Text ROI''s');
 
@@ -363,9 +363,9 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 
 %Create node graph of connected Bounding Boxes & find the index of boxes
 %that intersect
-[componentIndices, componentSizes] = conncomp(graph(overlapRatio));
+[labelledROI, labelSizes] = conncomp(graph(overlapRatio));
 
-%%
+%NEEDS TESTING
 % tic
 % %Ensure that there is similarity between connected letters
 % maxComponentId = max(componentIndices);
@@ -402,27 +402,26 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %     end
 % end
 % loopTime = toc
-%%
 
 %Find the minimum values of x & y and the maximum values of w & h for each 
-%of the connected components to form merged bounding boxes
-componentIndices = componentIndices';
-x1 = accumarray(componentIndices, x, [], @min);
-y1 = accumarray(componentIndices, y, [], @min);
-x2 = accumarray(componentIndices, x + w, [], @max);
-y2 = accumarray(componentIndices, y + h, [], @max);
+%of the intersecting bounding boxes to form encompassing bounding boxes
+labelledROI = labelledROI';
+x1 = accumarray(labelledROI, x, [], @min);
+y1 = accumarray(labelledROI, y, [], @min);
+x2 = accumarray(labelledROI, x + w, [], @max);
+y2 = accumarray(labelledROI, y + h, [], @max);
 
 %Create merged bounding boxes in appropriate format
-textBBoxes = [x1, y1, x2 - x1, y2 - y1];
-mergedTextRegion = insertShape(I, 'Rectangle', textBBoxes, 'LineWidth', 2);
-figure, imshow(mergedTextRegion), title('Merged Text Regions');
+mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
+mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
+figure, imshow(mergedTextROIImage), title('Merged Text ROI');
 
 %Remove single unconnected bounding boxes
-wordCandidates = componentSizes > 1;
-textBBoxes = textBBoxes(wordCandidates, :);
+wordCandidates = labelSizes > 1;
+filteredTextROI = mergedTextROI(wordCandidates, :);
 
-filteredTextRegion = insertShape(I, 'Rectangle', textBBoxes, 'LineWidth', 2);
-figure, imshow(filteredTextRegion), title('Remove Singular Regions');
+filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
+figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
 
 %Maybe grow only horizontally? Dates aren't vertical.
 %Rule-based? grow by own size, etc.
@@ -450,6 +449,7 @@ detectedText = ocr(greySharp, textROI);
 %OCR w/ Temporal Fusion (takes OCR across a range of different frames)
 %Rotate to minimise BBox size & get correct orienttion
 %Get rotation that minimise height of image (top/bottom pixel)
+%In case of split, sort by y so get ROI on same level/group together Y
 
 %% Perform Text Matching using Regex
 
