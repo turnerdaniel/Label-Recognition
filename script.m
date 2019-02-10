@@ -1,4 +1,20 @@
-%% MATLAB Script for the recognition of Expiry Dates from Images
+%% MATLAB Script for the recognition of Food Expiry Dates from Images
+%Author: Daniel Turner
+%University: University of Lincoln
+%Date: 23/1/2019
+
+%Stroke Width Transform Algorithm:
+%Li, Y. and Lu, H. (2012) Scene Text Detection via Stroke Width. In:
+%21st International Conference on Pattern Recognition (ICPR 2012),
+%Tsukuba, Japan, 11-15 November. IEEE, 681–684. Available from 
+%https://ieeexplore.ieee.org/document/6460226 [accessed 10/2/2019].
+
+%Candidate Text Grouping Algorithm:
+%Mathworks (undated) Automatically Detect and Recognize Text in Natural
+%Images. Available from https://uk.mathworks.com/help/vision/examples/
+%automatically-detect-and-recognize-text-in-natural-images.html#d120e277 
+%[accessed 10 February 2019].
+
 %Reset MATLAB environement
 clear; close all; clc;
 
@@ -11,18 +27,22 @@ clear; close all; clc;
 %Variable Renaming
 
 %Saturday Notes:
-%The skeleton implementation is good if referenced (MATLAB & journal) & effecient
-%Optimise if statements & loop
-%Investigate SWT threshold
+%The skeleton implementation is good if referenced (MATLAB & journal)
+%   & effecient
 %The CC method does have slight disadvanatges (sometimes wrong, thinning,
 %   more difficult to destinguish from non-text, interfere w/ barcode)
 
 %Sunday:
 %Test CC - check aspect ratio/soldity parameters for 20 NOV(2325)
-%Do above
-%Implement BBox joining w/ rules
-%Add code references & clean up vars
-%Check ROI Rules
+%clean up vars
+%Investigate SWT threshold
+%Justify the citations in report
+
+%Monday:
+%Test rule-based bbox joining
+%expand BBox's vertically to ensure space around edge
+%Optimise if statements & loop
+%Do OCR
 
 %% Read image
 
@@ -31,7 +51,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image6.jpeg');
+I = imread('img/20 NOV(2325).jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -126,7 +146,6 @@ clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
 %% Connected Component Enhanced MSER (CCEMSER)
-%Intersection with threshold like: https://ieeexplore.ieee.org/document/7760054
 
 mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
 totalObjects = size(mserStats, 1);
@@ -204,6 +223,7 @@ mserLabel = bwlabel(clearSmallHoles);
 mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
     'EulerNumber', 'Extent', 'Solidity');
 
+%Calculte the maximum aspect ratio
 bBoxes = vertcat(mserStats.BoundingBox);
 bbWidths = bBoxes(:, 3)';
 bbHeights = bBoxes(:, 4)';
@@ -251,7 +271,6 @@ figure, imshow(keptObjectsImage), title('Filter images using text properties')
 mserStats = regionprops(keptObjectsImage, 'Image');
 mserLabel = bwlabel(keptObjectsImage);
 
-% https://cs.adelaide.edu.au/~yaoli/wp-content/publications/icpr12_strokewidth.pdf
 totalObjects = size(mserStats, 1);
 variation = zeros(1, totalObjects);
 
@@ -292,24 +311,15 @@ keptSWTImage = ismember(mserLabel, keptSWT);
 figure, imshow(keptSWTImage), title('Filter images using SWT');
 figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 
-% helperStrokeWidth() - or could make own... 
-% Pseudocode @ Mathworks and journals
-
 %Get MSER regions within the ROI bbox?
 %Need to use MSER cc regions from the start / could just do for this step?
 
-%% Gabor Filters/K-Means Clustering/Watershed/Heatmap
-
-% Additional research required...
-% See proposal for K-Means method
-
-%% Detected Text
+%% Rule-Based Candidate Text Grouping
 
 %Display potential text regions
 stats = regionprops(keptSWTImage, 'BoundingBox');
 textROI = vertcat(stats.BoundingBox);
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
-
 figure, imshow(textROIImage), title('Text ROI''s');
 
 % textSe = strel('line', 25, 0);
@@ -324,20 +334,14 @@ figure, imshow(textROIImage), title('Text ROI''s');
 % Making it hard to capture the entire date without
 % over-expanding/under-expanding
 
-
-%MATLAB reference & why
-%https://uk.mathworks.com/help/vision/examples/automatically-detect-and-recognize-text-in-natural-images.html#d120e277
-
-%Expand horizontally - dates will always be on the same line
-%Expand by width of of letter, group by similar heights
-
 %Get bounding box sizes
 x = textROI(:,1);
 y = textROI(:,2);
 w = textROI(:,3);
 h = textROI(:,4);
 
-%Expand ROI by half the character width in horizontal direction
+%Expand ROI by half the character width in horizontal direction since dates
+%are always vertically aligned
 x = x - (w/2);
 w = 2 * w;
 
@@ -357,45 +361,48 @@ overlapSize = size(overlapRatio, 1);
 %Remove union with own Bounding Box
 overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 
-%Create node graph of connected Bounding Boxes
-g = graph(overlapRatio);
-%Find the index of boundary boxes that intersect
-[componentIndices, componentSizes] = conncomp(g);
+%Create node graph of connected Bounding Boxes & find the index of boxes
+%that intersect
+[componentIndices, componentSizes] = conncomp(graph(overlapRatio));
 
-%Ensure that there is similarity between connected letters
-maxComponentId = max(componentIndices);
-%loop through connected bounding boxes
-for k = 1:maxComponentId
-    %find the index of connected bounding boxes
-    connectedBoxes = find(componentIndices == k);
-    %get the bounding box heights
-    heightOfBoxes = h(connectedBoxes);
-    
-    %Ensure that joined regions have similar heights
-    %###MAYBE CHANGE###%
-    meanVal = mean(heightOfBoxes);
-    error = meanVal/2;
-    
-    %create mask of bounding boxes that don't meet the criteria
-    validBoxes = heightOfBoxes > meanVal - error & heightOfBoxes < meanVal + error;
-    discardHeight = find(validBoxes == 0);
-    
-    %get the index of bounding boxes that don't meet the criteria
-    invalidHeight = connectedBoxes(discardHeight);
-    
-    %Check that there the validHeights matrix is not empty
-    if (~isempty(invalidHeight))
-        %loop through invalid indexes
-        for i = 1:size(invalidHeight, 2)
-            id = invalidHeight(i)
-            %Seperate the component into a new indices by essentially
-            %creating a new 'label' above max value
-            componentIndices(id) = max(componentIndices) + 1;
-            %Add new value to the end of component size
-            componentSizes(size(componentSizes, 2) + 1) = 1;
-        end
-    end
-end
+%%
+% tic
+% %Ensure that there is similarity between connected letters
+% maxComponentId = max(componentIndices);
+% %loop through connected bounding boxes
+% for k = 1:maxComponentId
+%     %find the index of connected bounding boxes
+%     connectedBoxes = find(componentIndices == k);
+%     %get the bounding box heights
+%     heightOfBoxes = h(connectedBoxes);
+%     
+%     %Ensure that joined regions have similar heights
+%     %###MAYBE CHANGE###%
+%     meanVal = mean(heightOfBoxes);
+%     error = meanVal/2;
+%     
+%     %create mask of bounding boxes that don't meet the criteria
+%     validBoxes = heightOfBoxes > meanVal - error & heightOfBoxes < meanVal + error;
+%     discardHeight = find(validBoxes == 0);
+%     
+%     %get the index of bounding boxes that don't meet the criteria
+%     invalidHeight = connectedBoxes(discardHeight);
+%     
+%     %Check that there the validHeights matrix is not empty
+%     if (~isempty(invalidHeight))
+%         %loop through invalid indexes
+%         for i = 1:size(invalidHeight, 2)
+%             id = invalidHeight(i)
+%             %Seperate the component into a new indices by essentially
+%             %creating a new 'label' above max value
+%             componentIndices(id) = max(componentIndices) + 1;
+%             %Add new value to the end of component size
+%             componentSizes(size(componentSizes, 2) + 1) = 1;
+%         end
+%     end
+% end
+% loopTime = toc
+%%
 
 %Find the minimum values of x & y and the maximum values of w & h for each 
 %of the connected components to form merged bounding boxes
@@ -419,9 +426,6 @@ figure, imshow(filteredTextRegion), title('Remove Singular Regions');
 
 %Maybe grow only horizontally? Dates aren't vertical.
 %Rule-based? grow by own size, etc.
-%Rotate to minimiise BBox size & get correct orienttion
-%Get rotation that minimise height of image (top/bottom pixel)
-%One BBox by self isn't worth
 
 %% Perform Optical Character Recognition (OCR) & Preperation
 
@@ -444,6 +448,8 @@ detectedText = ocr(greySharp, textROI);
 %Need to consider rotation (Hough transform? regionprops.Orientation?)
 %Rotate several times and take highest confidence
 %OCR w/ Temporal Fusion (takes OCR across a range of different frames)
+%Rotate to minimise BBox size & get correct orienttion
+%Get rotation that minimise height of image (top/bottom pixel)
 
 %% Perform Text Matching using Regex
 
