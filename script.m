@@ -31,7 +31,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/378.jpeg');
+I = imread('img/image6.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -366,7 +366,7 @@ g = graph(overlapRatio);
 maxComponentId = max(componentIndices);
 %loop through connected bounding boxes
 for k = 1:maxComponentId
-    %find the index connected bounding boxes
+    %find the index of connected bounding boxes
     connectedBoxes = find(componentIndices == k);
     %get the bounding box heights
     heightOfBoxes = h(connectedBoxes);
@@ -391,9 +391,8 @@ for k = 1:maxComponentId
             %Seperate the component into a new indices by essentially
             %creating a new 'label' above max value
             componentIndices(id) = max(componentIndices) + 1;
-            %Add new value to the end of component size. Below is wrong/too
-            %high
-            componentSizes(id) = 1;
+            %Add new value to the end of component size
+            componentSizes(size(componentSizes, 2) + 1) = 1;
         end
     end
 end
