@@ -19,12 +19,12 @@
 clear; close all; clc;
 
 %TODO:
-%Fine-tune Region property Segmentation
-%Implement SWT/Gabor/K-Means 
-%Improve OCR
+%Small improvemsnts to Region property Segmentation
+%Implement OCR
 %Implement date recognition
 %Further false-positive reductions
 %Variable Renaming
+%Parameter Tweaking
 
 %Saturday Notes:
 %The skeleton implementation is good if referenced (MATLAB & journal)
@@ -42,7 +42,7 @@ clear; close all; clc;
 %Group together text on same y axis and close x axis
 %Investigate SWT threshold
 %Optimise if statements & loop
-%Do OCR
+%Do OCR part
 
 %% Read image
 
