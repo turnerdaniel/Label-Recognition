@@ -18,9 +18,11 @@ clear; close all; clc;
 %   more difficult to destinguish from non-text, interfere w/ barcode)
 
 %Sunday:
-%Test CC - check aspect ratio/soldity parameters
+%Test CC - check aspect ratio/soldity parameters for 20 NOV(2325)
 %Do above
 %Implement BBox joining w/ rules
+%Add code references & clean up vars
+%Check ROI Rules
 
 %% Read image
 
@@ -29,7 +31,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/20 NOV(2325).jpeg');
+I = imread('img/378.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -40,7 +42,7 @@ else
 end
 
 %Get dimensions of image
-[height, width] = size(grey);
+[imageHeight, imageWidth] = size(grey);
 
 %% Image Pre-processing - Remove Noise, Increase Contrast & Sharpness
 
@@ -96,16 +98,12 @@ title('MSER Regions');
 hold off;
 
 %Initialise logical image with necessary dimensions
-mserBW = false(height, width);
+mserBW = false(imageHeight, imageWidth);
 %Convert img co-ordinates to linear image indexes
 ind = sub2ind(size(mserBW), mserPixels(:,2), mserPixels(:,1));
 %assign true to co-ordinates that match
 mserBW(ind) = true;
 figure, imshow(mserBW), title('logical MSER Image');
-
-%% Edge Detection using Canny Edge Detector 
-%Could just use classic intersection with MSER:
-%https://ieeexplore.ieee.org/document/7760054
 
 %% Image Post-Processing - Opening, 
 %Watershed may be good?
@@ -128,10 +126,11 @@ clearSmallHoles = ~bwareaopen(~clearNoise, 3);
 figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
 %% Connected Component Enhanced MSER (CCEMSER)
+%Intersection with threshold like: https://ieeexplore.ieee.org/document/7760054
 
 mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
 totalObjects = size(mserStats, 1);
-CCadjustedImage = false(height, width);
+CCadjustedImage = false(imageHeight, imageWidth);
 
 tic
 for i = 1:totalObjects
@@ -196,7 +195,7 @@ figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
 
 %% Remove Unlikely Candidates using Region Properties
 
-% Eccentricity = similar to a line segment (1)
+% Eccentricity = similarity to line segment (1) or cirlce (0)
 % Euler Number = Don't have many holes (max 2 | B)
 % Aspect Ratio = mostly square (vertical & horizontal)
 % Extent = have very high or very low occupation of bounding box (O vs l)
@@ -237,12 +236,12 @@ keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
 %Return pixels that satisfy the similar property criteria for the image
 keptObjectsImage = ismember(mserLabel, keptObjects);
 
-figure, imshow(clearSmallHoles), title('original');
-figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
-figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
-figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
-figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
-figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
+% figure, imshow(clearSmallHoles), title('original');
+% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
+% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
+% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
+% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
+% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
 
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
@@ -279,6 +278,7 @@ for i = 1:totalObjects
     skeletonTransform = bwmorph(paddedImage, 'thin', inf);
         
     %Create stroke width image from distanceTransform and skeleton
+    %Change to .*
     strokeWidth = distanceTransform(skeletonTransform);
     %Calculate the variation in stroke widths
     variation(i) = std(strokeWidth)/mean(strokeWidth);
@@ -297,7 +297,6 @@ figure, plot(variation), yline(variationThresh); title('SW Variation in Image');
 
 %Get MSER regions within the ROI bbox?
 %Need to use MSER cc regions from the start / could just do for this step?
-%Set Exterior pixels to -1 (not 0/1) then maximise the number of 1's
 
 %% Gabor Filters/K-Means Clustering/Watershed/Heatmap
 
@@ -311,13 +310,113 @@ stats = regionprops(keptSWTImage, 'BoundingBox');
 textROI = vertcat(stats.BoundingBox);
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
 
-figure, imshow(textROIImage), title('Text ROI');
+figure, imshow(textROIImage), title('Text ROI''s');
 
-%1 = calculate bounding boxes and expand by small amount. 
-%Overlap = same text region.
+% textSe = strel('line', 25, 0);
+% text = imclose(keptSWTImage, textSe);
+% regionStats = regionprops(text, 'BoundingBox');
+% dilatedROI = vertcat(regionStats.BoundingBox);
+% dilatedTextROIImage = insertShape(I, 'Rectangle', dilatedROI, 'LineWidth', 2);
+% figure, imshow(dilatedTextROIImage), title('Expanded Text ROI');
+%
+% Tried to use closing to combine the text into lines. However, it
+% resulted in being difficult to respond to the different font sizes.
+% Making it hard to capture the entire date without
+% over-expanding/under-expanding
 
-%2 = peform morphological operation on text to grow/join letters. Then
-%group into bounding boxes
+
+%MATLAB reference & why
+%https://uk.mathworks.com/help/vision/examples/automatically-detect-and-recognize-text-in-natural-images.html#d120e277
+
+%Expand horizontally - dates will always be on the same line
+%Expand by width of of letter, group by similar heights
+
+%Get bounding box sizes
+x = textROI(:,1);
+y = textROI(:,2);
+w = textROI(:,3);
+h = textROI(:,4);
+
+%Expand ROI by half the character width in horizontal direction
+x = x - (w/2);
+w = 2 * w;
+
+%Ensure that BBox is within bounds of the image
+x = max(x, 1);
+w = min(w, imageWidth - x);
+
+%Create expanded bounding boxes
+expandedTextROI = [x, y, w, h];
+expandedTextROIImage = insertShape(I, 'Rectangle', expandedTextROI, 'LineWidth', 2);
+figure, imshow(expandedTextROIImage), title('Expanded Text ROI');
+
+%Calculate the ratio of union between bounding boxes
+overlapRatio = bboxOverlapRatio(expandedTextROI, expandedTextROI, 'Union');
+overlapSize = size(overlapRatio, 1);
+
+%Remove union with own Bounding Box
+overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
+
+%Create node graph of connected Bounding Boxes
+g = graph(overlapRatio);
+%Find the index of boundary boxes that intersect
+[componentIndices, componentSizes] = conncomp(g);
+
+%Ensure that there is similarity between connected letters
+maxComponentId = max(componentIndices);
+%loop through connected bounding boxes
+for k = 1:maxComponentId
+    %find the index connected bounding boxes
+    connectedBoxes = find(componentIndices == k);
+    %get the bounding box heights
+    heightOfBoxes = h(connectedBoxes);
+    
+    %Ensure that joined regions have similar heights
+    %###MAYBE CHANGE###%
+    meanVal = mean(heightOfBoxes);
+    error = meanVal/2;
+    
+    %create mask of bounding boxes that don't meet the criteria
+    validBoxes = heightOfBoxes > meanVal - error & heightOfBoxes < meanVal + error;
+    discardHeight = find(validBoxes == 0);
+    
+    %get the index of bounding boxes that don't meet the criteria
+    invalidHeight = connectedBoxes(discardHeight);
+    
+    %Check that there the validHeights matrix is not empty
+    if (~isempty(invalidHeight))
+        %loop through invalid indexes
+        for i = 1:size(invalidHeight, 2)
+            id = invalidHeight(i)
+            %Seperate the component into a new indices by essentially
+            %creating a new 'label' above max value
+            componentIndices(id) = max(componentIndices) + 1;
+            %Add new value to the end of component size. Below is wrong/too
+            %high
+            componentSizes(id) = 1;
+        end
+    end
+end
+
+%Find the minimum values of x & y and the maximum values of w & h for each 
+%of the connected components to form merged bounding boxes
+componentIndices = componentIndices';
+x1 = accumarray(componentIndices, x, [], @min);
+y1 = accumarray(componentIndices, y, [], @min);
+x2 = accumarray(componentIndices, x + w, [], @max);
+y2 = accumarray(componentIndices, y + h, [], @max);
+
+%Create merged bounding boxes in appropriate format
+textBBoxes = [x1, y1, x2 - x1, y2 - y1];
+mergedTextRegion = insertShape(I, 'Rectangle', textBBoxes, 'LineWidth', 2);
+figure, imshow(mergedTextRegion), title('Merged Text Regions');
+
+%Remove single unconnected bounding boxes
+wordCandidates = componentSizes > 1;
+textBBoxes = textBBoxes(wordCandidates, :);
+
+filteredTextRegion = insertShape(I, 'Rectangle', textBBoxes, 'LineWidth', 2);
+figure, imshow(filteredTextRegion), title('Remove Singular Regions');
 
 %Maybe grow only horizontally? Dates aren't vertical.
 %Rule-based? grow by own size, etc.
