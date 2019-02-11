@@ -38,10 +38,10 @@ clear; close all; clc;
 
 %Monday:
 %Test rule-based bbox joining
-%expand BBox's vertically to ensure space around edge
-%Group together text on same y axis and close x axis
+%Make bbox width of letter
 %Investigate SWT threshold
 %Optimise if statements & loop
+%Remove justification from code and put in own file
 %Do OCR part
 
 %% Read image
@@ -49,9 +49,9 @@ clear; close all; clc;
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4 5 6 7.jpeg');
+%       ('img/image1 2 3 4 5 6 7 8.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/20 NOV(2325).jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -366,42 +366,48 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %that intersect
 [labelledROI, labelSizes] = conncomp(graph(overlapRatio));
 
-% tic
-% %Ensure that there is similarity between connected letters
-% maxComponentId = max(componentIndices);
-% %loop through connected bounding boxes
-% for k = 1:maxComponentId
-%     %find the index of connected bounding boxes
-%     connectedBoxes = find(componentIndices == k);
-%     %get the bounding box heights
-%     heightOfBoxes = h(connectedBoxes);
-%     
-%     %Ensure that joined regions have similar heights
-%     %###MAYBE CHANGE###% std()?
-%     meanVal = mean(heightOfBoxes);
-%     error = meanVal/2;
-%     
-%     %create mask of bounding boxes that don't meet the criteria
-%     validBoxes = heightOfBoxes > meanVal - error & heightOfBoxes < meanVal + error;
-%     discardHeight = find(validBoxes == 0);
-%     
-%     %get the index of bounding boxes that don't meet the criteria
-%     invalidHeight = connectedBoxes(discardHeight);
-%     
-%     %Check that there the validHeights matrix is not empty
-%     if (~isempty(invalidHeight))
-%         %loop through invalid indexes
-%         for i = 1:size(invalidHeight, 2)
-%             id = invalidHeight(i)
-%             %Seperate the component into a new indices by creating
-%             %a new 'label' above max value
-%             componentIndices(id) = max(componentIndices) + 1;
-%             %Add new value to the end of component size
-%             componentSizes(size(componentSizes, 2) + 1) = 1;
-%         end
-%     end
-% end
-% loopTime = toc
+tic
+%Ensure that there is similarity between connected letters
+maxComponents = max(labelledROI);
+%loop through connected bounding boxes
+for k = 1:maxComponents
+    %find the index of connected bounding boxes
+    connectedBoxes = find(labelledROI == k);
+    %get the bounding box heights
+    heightOfBoxes = h(connectedBoxes);
+    
+    %Text usually has a difference lower than half the height. Else is
+    %removed since it is not text or not related due to high variation. 
+    
+    %Attempted to use IQR() and std() to help calculate text height but
+    %that ended up removing legitimate candidates/not have any affect due 
+    %to the size of their margin of error. 
+    
+    %Ensure that joined regions have similar heights
+    meanHeight = mean(heightOfBoxes);
+    meanError = meanHeight/2;
+    
+    %create mask of bounding boxes that don't meet the criteria
+    validBoxes = heightOfBoxes > meanHeight - meanError & heightOfBoxes < meanHeight + meanError;
+    discardHeight = find(validBoxes == 0);
+    
+    %get the index of bounding boxes that don't meet the criteria
+    invalidHeight = connectedBoxes(discardHeight);
+    
+    %Check that there the validHeights matrix is not empty
+    if (~isempty(invalidHeight))
+        %loop through invalid indexes
+        for i = 1:size(invalidHeight, 2)
+            id = invalidHeight(i);
+            %Seperate the component into a new indices by creating
+            %a new 'label' above max value
+            labelledROI(id) = max(labelledROI) + 1;
+            %Add new value to the end of component size
+            labelSizes(size(labelSizes, 2) + 1) = 1;
+        end
+    end
+end
+loopTime = toc
 
 %Find the minimum values of x & y and the maximum values of w & h for each 
 %of the intersecting bounding boxes to form encompassing bounding boxes
@@ -414,7 +420,7 @@ y2 = accumarray(labelledROI, y + h, [], @max);
 %Create merged bounding boxes in appropriate format
 mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
-figure, imshow(mergedTextROIImage), title('Merged Text ROI');
+figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
 
 %Remove single unconnected bounding boxes
 wordCandidates = labelSizes > 1;
@@ -463,7 +469,8 @@ detectedText = ocr(greySharp, textROI);
 %OCR w/ Temporal Fusion (takes OCR across a range of different frames)
 %Rotate to minimise BBox size & get correct orienttion
 %Get rotation that minimise height of image (top/bottom pixel)
-%In case of split, sort by y so get ROI on same level/group together Y
+%In case of split, Group together text on same y axis and close x axis
+%ROI could be too small - check
 
 %% Perform Text Matching using Regex
 
