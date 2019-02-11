@@ -19,7 +19,7 @@
 clear; close all; clc;
 
 %TODO:
-%Small improvemsnts to Region property Segmentation
+%Small improvements to Region property Segmentation
 %Implement OCR
 %Implement date recognition
 %Further false-positive reductions
@@ -34,9 +34,9 @@ clear; close all; clc;
 
 %Sunday Notes:
 %Ensure the citations are jusitified in the report
+%Maybe create horz & vert aspect Ratio for more fine-tuning if needed
 
 %Monday:
-%Test CC - create & check (horz/vert) aspect ratio/soldity parameters for 20 NOV(2325)
 %Test rule-based bbox joining
 %expand BBox's vertically to ensure space around edge
 %Group together text on same y axis and close x axis
@@ -51,7 +51,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image3.jpeg');
+I = imread('img/20 NOV(2325).jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -365,7 +365,6 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %that intersect
 [labelledROI, labelSizes] = conncomp(graph(overlapRatio));
 
-%NEEDS TESTING
 % tic
 % %Ensure that there is similarity between connected letters
 % maxComponentId = max(componentIndices);
