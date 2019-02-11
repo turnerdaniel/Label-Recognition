@@ -25,6 +25,7 @@ clear; close all; clc;
 %Further false-positive reductions
 %Variable Renaming
 %Parameter Tweaking
+%Optimisation (if/loops/memory)
 
 %Saturday Notes:
 %The skeleton implementation is good if referenced (MATLAB & journal)
@@ -37,13 +38,12 @@ clear; close all; clc;
 %Maybe create horz & vert aspect Ratio for more fine-tuning if needed
 
 %Monday Notes:
-%Potential improvements include making bbox width of letter
+%Potential improvements include making bbox width of 1 letter (not 1/2)
 %SWT Threshold needs to be tested depending on whether we want to preserve
 %as much text as possible or leave just the expiry date.
 
-%Investigate SWT threshold
+%Edge Case for CC MSER
 %Optimise if statements & loop
-%Remove justification from code and put in own file
 %Do OCR part
 
 %% Read image
@@ -77,22 +77,11 @@ end
 %smoothing amount
 greyWeiner = wiener2(grey, [3 3]);
 
-%Salt & Pepper noise not common on digital images
-%greyMed = medfilt2(grey, [3 3]);
-
 %Perform Linear Contrast Stretching (Could change Gamma?)
 greyContrastStretch = imadjust(greyWeiner);
 
-%Originally used CLAHE but that introduced more noise and increased size of
-%letters; leading to joining
-%greyClahe = adapthisteq(greyWeiner);
-
 %Use unsharp masking to increase image sharpness
 greySharp = imsharpen(greyContrastStretch);
-
-%Laplacian/unsharp mask sharpening produce very similar results
-%Laplacian more noisy on some tests but neither of them have clear
-%advantages
 
 %Display pre-processing effects
 figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
@@ -135,7 +124,6 @@ seSquare = strel('square', 3);
 %seDiamond = strel('diamond', 1);
 
 %Opening to remove small joins
-%Maybe adjust to small se?
 opened = imopen(mserBW, seSquare);
 
 figure, subplot(1,2,1), imshow(mserBW), title('original');
@@ -163,12 +151,10 @@ for i = 1:totalObjects
     %Crop the greyscale image
     greyImage = imcrop(greySharp, imageBBox);
     
-    %theshold the cropped greyscale image using Otsu
-    %Problem is that text can be light/dark (apply twice?)
+    %theshold the cropped greyscale image using Otsu's Method
     binaryImage = imbinarize(greyImage);  
     
     %Perform CC analysis to find most likely text (BoW, DoL text)
-    %Each letter should have the lowest number of non-zero components
     ccReg = bwconncomp(image & binaryImage);
     ccInv = bwconncomp(image & ~binaryImage);
     
@@ -176,9 +162,10 @@ for i = 1:totalObjects
     ccRegSize = size(cat(1, ccReg.PixelIdxList{:}), 1);
     ccInvSize = size(cat(1, ccInv.PixelIdxList{:}), 1);
     
-    %Optimise if statements
+    %Check objects to find which has the fewest non-zero components which
+    %will more than likely have the appropriate threshold
     if ccReg.NumObjects == 0 && ccInv.NumObjects ~= 0
-        %Use regular image
+        %Use inverse image
         keepImage = image & ~binaryImage;
     elseif ccInv.NumObjects == 0 && ccReg.NumObjects ~= 0
         %Use regular image
@@ -187,9 +174,11 @@ for i = 1:totalObjects
         %Use regular image
         keepImage = image & binaryImage;
     elseif ccInv.NumObjects < ccReg.NumObjects
-        %Use regular image
+        %Use inverse image
         keepImage = image & ~binaryImage;
+        %Edge case where they could have matching number of objects
     elseif ccInv.NumObjects == ccReg.NumObjects
+        %Choose threshold that procuces the most pixels
         if ccRegSize < ccInvSize 
             keepImage = image & ~binaryImage;
         elseif ccInvSize < ccRegSize
@@ -249,9 +238,6 @@ validAspectRatio = aspectRatio < 3;
 % subplot(3,2,4), plot([mserStats.Solidity]), title('Solidity');
 % subplot(3,2,5), plot(aspectRatio), title('Aspect');
 
-%Attempted to use compactness and circulairty but would remove important
-%details and thresholds had to be reduced to the point of useless-ness.
-
 %Find the index of all objects that have valid properties
 keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
     validSolidity & validAspectRatio);
@@ -268,7 +254,6 @@ keptObjectsImage = ismember(mserLabel, keptObjects);
 figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
-%See what changes to threshold do
 
 swtStats = regionprops(keptObjectsImage, 'Image');
 swtLabel = bwlabel(keptObjectsImage);
@@ -278,13 +263,6 @@ swtVariation = zeros(1, totalObjects);
 
 %Lowest = 0.375
 swtVariationThresh = 0.4;
-
-%Attempted to use minimun variaton to eliminate holes in the middle of
-%letters to permit accurate SWT. However, meant that SWT wasn't recorded
-%correctly due to NaN and 0 being present in std(SWT)/mean(SWT)
-
-%The CCEMSER was needed to ensure that letters weren't filled & therfore
-%SWT would be more accurate/less false positives
 
 tic
 for i = 1:totalObjects
@@ -331,11 +309,6 @@ figure, imshow(textROIImage), title('Text ROI''s');
 % dilatedROI = vertcat(regionStats.BoundingBox);
 % dilatedTextROIImage = insertShape(I, 'Rectangle', dilatedROI, 'LineWidth', 2);
 % figure, imshow(dilatedTextROIImage), title('Expanded Text ROI');
-%
-% Tried to use closing to combine the text into lines. However, it
-% resulted in being difficult to respond to the different font sizes.
-% Making it hard to capture the entire date without
-% over-expanding/under-expanding
 
 %Get bounding box sizes
 x = textROI(:, 1);
@@ -343,7 +316,6 @@ y = textROI(:, 2);
 w = textROI(:, 3);
 h = textROI(:, 4);
 
-%Change to one character width?
 %Expand ROI by half the character width in horizontal direction since dates
 %are always vertically aligned
 expandedX = x - (w/2);
@@ -378,13 +350,6 @@ for k = 1:maxComponents
     connectedBoxes = find(labelledROI == k);
     %get the bounding box heights
     heightOfBoxes = h(connectedBoxes);
-    
-    %Text usually has a difference lower than half the height. Else is
-    %removed since it is not text or not related due to high variation. 
-    
-    %Attempted to use IQR() and std() to help calculate text height but
-    %that ended up removing legitimate candidates/not have any affect due 
-    %to the size of their margin of error. 
     
     %Ensure that joined regions have similar heights
     meanHeight = mean(heightOfBoxes);
@@ -446,9 +411,6 @@ expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
 
 expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
 figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
-
-%Maybe grow only horizontally? Dates aren't vertical.
-%Rule-based? grow by own size, etc.
 
 %% Perform Optical Character Recognition (OCR) & Preperation
 

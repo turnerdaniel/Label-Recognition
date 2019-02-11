@@ -1,0 +1,37 @@
+Salt & Pepper noise not common on digital images so didn't use median filter
+
+Originally used CLAHE but that introduced more noise and increased size of
+letters; leading to joining
+
+Laplacian/unsharp mask sharpening produce very similar results.
+Laplacian more noisy on some tests but neither of them have clear
+advantages.
+
+
+Region Properties
+------------------------------------
+Attempted to use compactness and circulairty but would remove important
+details and thresholds had to be reduced to the point of useless-ness.
+
+Stroke Width Transform
+------------------------------------
+Attempted to use minimun variaton to eliminate holes in the middle of
+letters to permit accurate SWT. However, meant that SWT wasn't recorded
+correctly due to NaN and 0 being present in std(SWT)/mean(SWT)
+
+The CCEMSER was needed to ensure that letters weren't filled & therefore
+SWT would be more accurate/less false positives
+
+Rule-Based Candidate Text Grouping
+------------------------------------
+Tried to use closing to combine the text into lines. However, it
+resulted in being difficult to respond to the different font sizes.
+Making it hard to capture the entire date without
+over-expanding/under-expanding
+
+Text usually has a difference lower than half the height. Else is
+removed since it is not text or not related due to high variation. 
+    
+Attempted to use IQR() and std() to help calculate text height but
+that ended up removing legitimate candidates/not have any affect due 
+to the size of their margin of error. 
