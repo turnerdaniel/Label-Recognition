@@ -335,22 +335,23 @@ figure, imshow(textROIImage), title('Text ROI''s');
 % over-expanding/under-expanding
 
 %Get bounding box sizes
-x = textROI(:,1);
-y = textROI(:,2);
-w = textROI(:,3);
-h = textROI(:,4);
+x = textROI(:, 1);
+y = textROI(:, 2);
+w = textROI(:, 3);
+h = textROI(:, 4);
 
+%Change to one character width?
 %Expand ROI by half the character width in horizontal direction since dates
 %are always vertically aligned
-x = x - (w/2);
-w = 2 * w;
+expandedX = x - (w/2);
+expandedW = 2 * w;
 
-%Ensure that BBox is within bounds of the image
-x = max(x, 1);
-w = min(w, imageWidth - x);
+%Ensure that ROI is within bounds of the image
+expandedX = max(expandedX, 1);
+expandedW = min(expandedW, imageWidth - expandedX);
 
 %Create expanded bounding boxes
-expandedTextROI = [x, y, w, h];
+expandedTextROI = [expandedX, y, expandedW, h];
 expandedTextROIImage = insertShape(I, 'Rectangle', expandedTextROI, 'LineWidth', 2);
 figure, imshow(expandedTextROIImage), title('Expanded Text ROI');
 
@@ -376,7 +377,7 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %     heightOfBoxes = h(connectedBoxes);
 %     
 %     %Ensure that joined regions have similar heights
-%     %###MAYBE CHANGE###%
+%     %###MAYBE CHANGE###% std()?
 %     meanVal = mean(heightOfBoxes);
 %     error = meanVal/2;
 %     
@@ -392,8 +393,8 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %         %loop through invalid indexes
 %         for i = 1:size(invalidHeight, 2)
 %             id = invalidHeight(i)
-%             %Seperate the component into a new indices by essentially
-%             %creating a new 'label' above max value
+%             %Seperate the component into a new indices by creating
+%             %a new 'label' above max value
 %             componentIndices(id) = max(componentIndices) + 1;
 %             %Add new value to the end of component size
 %             componentSizes(size(componentSizes, 2) + 1) = 1;
@@ -405,9 +406,9 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %Find the minimum values of x & y and the maximum values of w & h for each 
 %of the intersecting bounding boxes to form encompassing bounding boxes
 labelledROI = labelledROI';
-x1 = accumarray(labelledROI, x, [], @min);
+x1 = accumarray(labelledROI, expandedX, [], @min);
 y1 = accumarray(labelledROI, y, [], @min);
-x2 = accumarray(labelledROI, x + w, [], @max);
+x2 = accumarray(labelledROI, expandedX + expandedW, [], @max);
 y2 = accumarray(labelledROI, y + h, [], @max);
 
 %Create merged bounding boxes in appropriate format
@@ -421,6 +422,20 @@ filteredTextROI = mergedTextROI(wordCandidates, :);
 
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
+
+%Expand a little vertically to fully contain the height of each word
+expandedY = filteredTextROI(:, 2) - 4;
+expandedH = filteredTextROI(:, 4) + 4;
+%Ensure that ROI is within bounds of the image
+expandedY = max(expandedY, 1);
+expandedH = min(expandedH, imageHeight - expandedH);
+
+%Create expanded bounding boxes in appropriate format
+expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
+    filteredTextROI(:, 3), expandedH];
+
+expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
+figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
 
 %Maybe grow only horizontally? Dates aren't vertical.
 %Rule-based? grow by own size, etc.
