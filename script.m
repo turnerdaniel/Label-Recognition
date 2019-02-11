@@ -19,7 +19,6 @@
 clear; close all; clc;
 
 %TODO:
-%Small improvements to Region property Segmentation
 %Implement OCR
 %Implement date recognition
 %Further false-positive reductions
@@ -42,8 +41,6 @@ clear; close all; clc;
 %SWT Threshold needs to be tested depending on whether we want to preserve
 %as much text as possible or leave just the expiry date.
 
-%Edge Case for CC MSER
-%Optimise if statements & loop
 %Do OCR part
 
 %% Read image
@@ -181,7 +178,7 @@ for i = 1:totalObjects
         %Choose threshold that procuces the most pixels
         if ccRegSize < ccInvSize 
             keepImage = image & ~binaryImage;
-        elseif ccInvSize < ccRegSize
+        else
             keepImage = image & binaryImage;
         end
     else
