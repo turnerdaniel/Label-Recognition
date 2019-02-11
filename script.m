@@ -36,9 +36,11 @@ clear; close all; clc;
 %Ensure the citations are jusitified in the report
 %Maybe create horz & vert aspect Ratio for more fine-tuning if needed
 
-%Monday:
-%Test rule-based bbox joining
-%Make bbox width of letter
+%Monday Notes:
+%Potential improvements include making bbox width of letter
+%SWT Threshold needs to be tested depending on whether we want to preserve
+%as much text as possible or leave just the expiry date.
+
 %Investigate SWT threshold
 %Optimise if statements & loop
 %Remove justification from code and put in own file
@@ -51,7 +53,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/988.jpeg');
+I = imread('img/370.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -274,6 +276,7 @@ swtLabel = bwlabel(keptObjectsImage);
 totalObjects = size(swtStats, 1);
 swtVariation = zeros(1, totalObjects);
 
+%Lowest = 0.375
 swtVariationThresh = 0.4;
 
 %Attempted to use minimun variaton to eliminate holes in the middle of
@@ -430,8 +433,9 @@ filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth',
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
 
 %Expand a little vertically to fully contain the height of each word
-expandedY = filteredTextROI(:, 2) - 4;
-expandedH = filteredTextROI(:, 4) + 4;
+pixels = 2;
+expandedY = filteredTextROI(:, 2) - pixels;
+expandedH = filteredTextROI(:, 4) + (2 * pixels);
 %Ensure that ROI is within bounds of the image
 expandedY = max(expandedY, 1);
 expandedH = min(expandedH, imageHeight - expandedH);
@@ -471,6 +475,7 @@ detectedText = ocr(greySharp, textROI);
 %Get rotation that minimise height of image (top/bottom pixel)
 %In case of split, Group together text on same y axis and close x axis
 %ROI could be too small - check
+%Sort by X/Y to get correct reading order
 
 %% Perform Text Matching using Regex
 
