@@ -50,7 +50,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/370.jpeg');
+I = imread('img/image4.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -411,8 +411,58 @@ figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
 
 %% Perform Optical Character Recognition (OCR) & Preperation
 
-detectedText = ocr(greySharp, textROI);
-[detectedText.Text]
+ocrROI = [expandedFilteredTextROI(:, 1), expandedFilteredTextROI(:, 2), ...
+    expandedFilteredTextROI(:, 3), expandedFilteredTextROI(:, 4)];
+
+ROISize = size(ocrROI, 1);
+
+detectedText = strings(ROISize, 1);
+%Loop through candidate words
+for i = 1:ROISize
+    ROI = imcrop(keptSWTImage, [ocrROI(i, 1), ocrROI(i, 2), ocrROI(i, 3), ...
+        ocrROI(i, 4)]);
+    
+    ROI = imclearborder(ROI);
+    
+    stats = regionprops(ROI, 'BoundingBox');
+    
+    centreX = zeros(1, size(stats, 1));
+    centreY = zeros(1, size(stats, 1));
+    
+    figure, imshow(ROI);
+    %Loop through letters
+    for j = 1:size(stats, 1)
+        bb = stats(j).BoundingBox;
+        centreX(j) = round(mean([bb(1), bb(1)+bb(3)]));
+        centreY(j) = round(mean([bb(2), bb(2)+bb(4)]));
+        hold on;
+        plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2);
+        hold off;
+    end
+    
+    coeff = polyfit(centreX, centreY, 1);
+    
+    %size = ROI Width
+    xFit = linspace(1, size(ROI, 2), 10);
+    
+    yFit = polyval(coeff, xFit);
+    
+    angle = atan2d(yFit(10) - yFit(1), xFit(10) - xFit(1));
+    
+    hold on;
+    plot(xFit, yFit, 'g.-', 'MarkerSize', 15, 'LineWidth', 1);
+    title([num2str(angle), ' degrees']);
+    hold off;
+    
+    correctedROI = imrotate(ROI, angle);
+    
+    figure, imshow(correctedROI), title('corrected')
+    
+    ocrOutput = ocr(correctedROI, 'TextLayout', 'Line');
+    
+    detectedText(i) = ocrOutput.Text;
+end
+
 
 %could perform on multiple images (MSERRegions/greyscale/adaptiveThreshold)?
 
