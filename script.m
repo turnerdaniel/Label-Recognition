@@ -46,9 +46,9 @@ clear; close all; clc;
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4 5 6 7 8.jpeg');
+%       ('img/image1 2 3 4 5 6 7 8 9.jpeg');
 %       ('img/370 378 960 988.jpeg');
-I = imread('img/960.jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -426,23 +426,22 @@ for i = 1:ROISize
     ROI = imcrop(keptSWTImage, [ocrROI(i, 1), ocrROI(i, 2), ocrROI(i, 3), ...
         ocrROI(i, 4)]);
     
+    %Remove pixels touching the edge since they are probably not related to
+    %text
     ROI = imclearborder(ROI);
     
-    stats = regionprops(ROI, 'BoundingBox');
+    %Get minimum BoundingBoxes for each letter
+    ROIstats = regionprops(ROI, 'BoundingBox');
     
-    centreX = zeros(1, size(stats, 1));
-    centreY = zeros(1, size(stats, 1));
+    bboxes = vertcat(ROIstats.BoundingBox);
+    
+    centreX = round(mean([bboxes(:, 1), bboxes(:, 1) + bboxes(:, 3)], 2));
+    centreY = round(mean([bboxes(:, 2), bboxes(:, 2) + bboxes(:, 4)], 2));
     
     figure, imshow(ROI);
-    %Loop through letters
-    for j = 1:size(stats, 1)
-        bb = stats(j).BoundingBox;
-        centreX(j) = round(mean([bb(1), bb(1)+bb(3)]));
-        centreY(j) = round(mean([bb(2), bb(2)+bb(4)]));
-        hold on;
-        plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2);
-        hold off;
-    end
+    hold on
+    plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2);
+    hold off 
     
     coeff = polyfit(centreX, centreY, 1);
     
@@ -463,10 +462,7 @@ for i = 1:ROISize
         figure, imshow(ROI), title('corrected')
     end
     
-    %try OCR-iOS
-    
-    ocrOutput = ocr(ROI, 'Language', 'tessdata/eng.traineddata', ...
-        'TextLayout', 'Line', 'CharacterSet', ...
+    ocrOutput = ocr(ROI, 'TextLayout', 'Line', 'CharacterSet', ...
         '1234567890ABCDEFGHIJLMNOPRSTUVYabcdefghijlmnoprstuvy/.-:');
     
     detectedText(i) = ocrOutput.Text;
@@ -482,20 +478,14 @@ detectedText
 
 %TODO:
 %optimise ocr loop
+%test text grouping
 
 %problems with there being other picture elements in cropped area. Remove
 %objects not in bbox? Change to 'Block'?
-
 %problems with uneven illumination in enhanced MSER. Try tophat?
-%investigate regex for character set
-
-%test text grouping
-
 
 %letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
-
-%May need to get the OCR support package (visionSupportPackages) or 
-%download .traineddata from GitHub for best accuracy
+%May need to get the OCR support package (visionSupportPackages) for best accuracy
 %OCR w/ Temporal Fusion (takes OCR across a range of different frames)
 %Rotate to minimise BBox size & get correct orienttion
 %In case of split, Group together text on same y axis and close x axis
