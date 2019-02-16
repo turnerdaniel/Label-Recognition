@@ -47,8 +47,8 @@ clear; close all; clc;
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8.jpeg');
-%       ('img/370 378 988.jpeg');
-I = imread('img/20 NOV(1184).jpeg');
+%       ('img/370 378 960 988.jpeg');
+I = imread('img/960.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -417,8 +417,10 @@ ocrROI = [expandedFilteredTextROI(:, 1), expandedFilteredTextROI(:, 2), ...
     expandedFilteredTextROI(:, 3), expandedFilteredTextROI(:, 4)];
 
 ROISize = size(ocrROI, 1);
-
 detectedText = strings(ROISize, 1);
+bestFitStart = 1;
+bestFitEnd = 10;
+
 %Loop through candidate words
 for i = 1:ROISize
     ROI = imcrop(keptSWTImage, [ocrROI(i, 1), ocrROI(i, 2), ocrROI(i, 3), ...
@@ -444,23 +446,27 @@ for i = 1:ROISize
     
     coeff = polyfit(centreX, centreY, 1);
     
-    %size = ROI Width
-    xFit = linspace(1, size(ROI, 2), 10);
-    
+    %size = ROI Width to help create linear spread
+    xFit = linspace(bestFitStart, size(ROI, 2), bestFitEnd);
     yFit = polyval(coeff, xFit);
     
-    angle = atan2d(yFit(10) - yFit(1), xFit(10) - xFit(1));
+    angle = atan2d(yFit(bestFitEnd) - yFit(bestFitStart), ...
+        xFit(bestFitEnd) - xFit(bestFitStart));
     
     hold on;
     plot(xFit, yFit, 'g.-', 'MarkerSize', 15, 'LineWidth', 1);
     title([num2str(angle), ' degrees']);
     hold off;
     
-    correctedROI = imrotate(ROI, angle);
+    if (angle > 3 || angle < -3) 
+        ROI = imrotate(ROI, angle);
+        figure, imshow(ROI), title('corrected')
+    end
     
-    figure, imshow(correctedROI), title('corrected')
+    %try OCR-iOS
     
-    ocrOutput = ocr(correctedROI, 'TextLayout', 'Line', 'CharacterSet', ...
+    ocrOutput = ocr(ROI, 'Language', 'tessdata/eng.traineddata', ...
+        'TextLayout', 'Line', 'CharacterSet', ...
         '1234567890ABCDEFGHIJLMNOPRSTUVYabcdefghijlmnoprstuvy/.-:');
     
     detectedText(i) = ocrOutput.Text;
@@ -468,36 +474,31 @@ end
 
 detectedText
 
+%Potential improvements include increasing the size of images: (>20px)
+%ROI = imresize(ROI, 1.2, 'bilinear'). Can crop first using:
+%https://uk.mathworks.com/matlabcentral/answers/55253-how-to-crop-an-image-automatically
+%Perform morphology to help thin-out connected characters (not much use)
+
+
 %TODO:
-%test all images
-%stop over-compensating rotation
-%only rotate when necessary
-%increase image size if necessary
 %optimise ocr loop
+
+%problems with there being other picture elements in cropped area. Remove
+%objects not in bbox? Change to 'Block'?
+
+%problems with uneven illumination in enhanced MSER. Try tophat?
 %investigate regex for character set
+
 %test text grouping
 
 
-%could perform on multiple images (MSERRegions/greyscale/adaptiveThreshold)?
-
-%improve by creating a ocr characterSet to limit the possible characters to
 %letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
 
-%Change 'textLayout' to 'Block'/'line' may help
-%Perform morphology to help thin-out connected characters
-%Make sure letters are of adequate size (>20px)
-%Use ROI for OCR
-%Look at automatic thrshold methods (Gaussian) or threshold for each blob
 %May need to get the OCR support package (visionSupportPackages) or 
 %download .traineddata from GitHub for best accuracy
-%Could use MSER Regions or regions with least connected components
-%Need to consider rotation (Hough transform? regionprops.Orientation?)
-%Rotate several times and take highest confidence
 %OCR w/ Temporal Fusion (takes OCR across a range of different frames)
 %Rotate to minimise BBox size & get correct orienttion
-%Get rotation that minimise height of image (top/bottom pixel)
 %In case of split, Group together text on same y axis and close x axis
-%ROI could be too small - check
 %Sort by X/Y to get correct reading order
 
 %% Perform Text Matching using Regex
@@ -508,6 +509,8 @@ detectedText
 %
 % Could also look for dates on y-axis of months of date formats...
 % If not found, could repeat ocr with new threshold?
+
+%can use strjoin to concatenate string array
 
 %% Print the Date/Save to File
 
