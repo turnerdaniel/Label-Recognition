@@ -41,11 +41,6 @@ clear; close all; clc;
 %SWT Threshold needs to be tested depending on whether we want to preserve
 %as much text as possible or leave just the expiry date.
 
-%Do OCR part
-%Compensate for rotation over-correction
-%Error w/ Region grouping where 2 items are split into new labels leaving
-%the old one empty
-
 %% Read image
 
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
@@ -53,7 +48,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/20 NOV(2325).jpeg');
+I = imread('img/20 NOV(1184).jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -290,7 +285,7 @@ keptSWT = find(validStrokeWidths);
 keptSWTImage = ismember(swtLabel, keptSWT);
 
 figure, imshow(keptSWTImage), title('Filter images using SWT');
-figure, plot(swtVariation), yline(swtVariationThresh); title('SW Variation in Image');
+%figure, plot(swtVariation), yline(swtVariationThresh); title('SW Variation in Image');
 
 %Get MSER regions within the ROI bbox?
 %Need to use MSER cc regions from the start / could just do for this step?
@@ -465,12 +460,24 @@ for i = 1:ROISize
     
     figure, imshow(correctedROI), title('corrected')
     
-    ocrOutput = ocr(correctedROI, 'TextLayout', 'Line');
+    ocrOutput = ocr(correctedROI, 'TextLayout', 'Line', 'CharacterSet', ...
+        '1234567890ABCDEFGHIJLMNOPRSTUVYabcdefghijlmnoprstuvy/.-:');
     
     detectedText(i) = ocrOutput.Text;
 end
 
 detectedText
+
+%TODO:
+%test all images
+%stop over-compensating rotation
+%only rotate when necessary
+%increase image size if necessary
+%optimise ocr loop
+%investigate regex for character set
+%test text grouping
+
+
 %could perform on multiple images (MSERRegions/greyscale/adaptiveThreshold)?
 
 %improve by creating a ocr characterSet to limit the possible characters to
