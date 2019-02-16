@@ -42,6 +42,9 @@ clear; close all; clc;
 %as much text as possible or leave just the expiry date.
 
 %Do OCR part
+%Compensate for rotation over-correction
+%Error w/ Region grouping where 2 items are split into new labels leaving
+%the old one empty
 
 %% Read image
 
@@ -50,7 +53,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8.jpeg');
 %       ('img/370 378 988.jpeg');
-I = imread('img/image4.jpeg');
+I = imread('img/20 NOV(2325).jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -387,9 +390,13 @@ mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
 figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
 
-%Remove single unconnected bounding boxes
+%Remove single, unconnected bounding boxes
 wordCandidates = labelSizes > 1;
 filteredTextROI = mergedTextROI(wordCandidates, :);
+
+%Remove bounding boxes that are now empty from being seperated
+validSize = sum(filteredTextROI, 2) > 0;
+filteredTextROI = filteredTextROI(validSize, :);
 
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
@@ -463,7 +470,7 @@ for i = 1:ROISize
     detectedText(i) = ocrOutput.Text;
 end
 
-
+detectedText
 %could perform on multiple images (MSERRegions/greyscale/adaptiveThreshold)?
 
 %improve by creating a ocr characterSet to limit the possible characters to
