@@ -48,7 +48,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8 9.jpeg');
 %       ('img/370 378 960 988.jpeg');
-I = imread('img/988.jpeg');
+I = imread('img/image7.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -261,15 +261,16 @@ swtVariationThresh = 0.4;
 
 tic
 for i = 1:totalObjects
-    
+    %Get the image conting just the object
     object = swtStats(i).Image;
        
-    %Pad the image to avoid boundary effects
+    %Pad the image with 0's to avoid boundary effects
     paddedObject = padarray(object, [1 1]);
         
     %Distance Transform
     distanceTransform = bwdist(~paddedObject);
-    %Thinning until Skeleton
+    
+    %Perform thinning until Skeleton
     skeletonTransform = bwmorph(paddedObject, 'thin', inf);
         
     %Retrieve the stroke width values for the image
@@ -306,22 +307,22 @@ figure, imshow(textROIImage), title('Text ROI''s');
 % figure, imshow(dilatedTextROIImage), title('Expanded Text ROI');
 
 %Get bounding box sizes
-x = textROI(:, 1);
-y = textROI(:, 2);
-w = textROI(:, 3);
-h = textROI(:, 4);
+roiX = textROI(:, 1);
+roiY = textROI(:, 2);
+roiW = textROI(:, 3);
+roiH = textROI(:, 4);
 
 %Expand ROI by half the character width in horizontal direction since dates
 %are always vertically aligned
-expandedX = x - (w/2);
-expandedW = 2 * w;
+expandedX = roiX - (roiW/2);
+expandedW = 2 * roiW;
 
 %Ensure that ROI is within bounds of the image
 expandedX = max(expandedX, 1);
 expandedW = min(expandedW, imageWidth - expandedX);
 
 %Create expanded bounding boxes
-expandedTextROI = [expandedX, y, expandedW, h];
+expandedTextROI = [expandedX, roiY, expandedW, roiH];
 expandedTextROIImage = insertShape(I, 'Rectangle', expandedTextROI, 'LineWidth', 2);
 figure, imshow(expandedTextROIImage), title('Expanded Text ROI');
 
@@ -344,7 +345,7 @@ for k = 1:maxComponents
     %find the index of connected bounding boxes
     connectedBoxes = find(labelledROI == k);
     %get the bounding box heights
-    heightOfBoxes = h(connectedBoxes);
+    heightOfBoxes = roiH(connectedBoxes);
     
     %Ensure that joined regions have similar heights
     meanHeight = mean(heightOfBoxes);
@@ -376,9 +377,9 @@ loopTime = toc
 %of the intersecting bounding boxes to form encompassing bounding boxes
 labelledROI = labelledROI';
 x1 = accumarray(labelledROI, expandedX, [], @min);
-y1 = accumarray(labelledROI, y, [], @min);
+y1 = accumarray(labelledROI, roiY, [], @min);
 x2 = accumarray(labelledROI, expandedX + expandedW, [], @max);
-y2 = accumarray(labelledROI, y + h, [], @max);
+y2 = accumarray(labelledROI, roiY + roiH, [], @max);
 
 %Create merged bounding boxes in appropriate format
 mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
@@ -397,9 +398,9 @@ filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth',
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
 
 %Expand a little vertically to fully contain the height of each word
-pixels = 2;
-expandedY = filteredTextROI(:, 2) - pixels;
-expandedH = filteredTextROI(:, 4) + (2 * pixels);
+pixelExpansion = 2;
+expandedY = filteredTextROI(:, 2) - pixelExpansion;
+expandedH = filteredTextROI(:, 4) + (2 * pixelExpansion);
 %Ensure that ROI is within bounds of the image
 expandedY = max(expandedY, 1);
 expandedH = min(expandedH, imageHeight - expandedH);
@@ -411,62 +412,78 @@ expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
 expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
 figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
 
-%% Perform Optical Character Recognition (OCR) & Preperation
+%% Prepares for and Performs Optical Character Recognition (OCR)
 
+%Get ROIs
 ocrROI = [expandedFilteredTextROI(:, 1), expandedFilteredTextROI(:, 2), ...
     expandedFilteredTextROI(:, 3), expandedFilteredTextROI(:, 4)];
 
+%Pre-allocate vectors & initialise variables
 ROISize = size(ocrROI, 1);
 detectedText = strings(ROISize, 1);
-bestFitStart = 1;
-bestFitEnd = 10;
+samplePoints = 10;
 
+tic
 %Loop through candidate words
 for i = 1:ROISize
+    %Crop binary image using expanded bounding boxes
     ROI = imcrop(keptSWTImage, [ocrROI(i, 1), ocrROI(i, 2), ocrROI(i, 3), ...
         ocrROI(i, 4)]);
-    
+
     %Remove pixels touching the edge since they are probably not related to
     %text
     ROI = imclearborder(ROI);
     
-    %Get minimum BoundingBoxes for each letter
+    %Get minimum Bounding Boxes for each letter
     ROIstats = regionprops(ROI, 'BoundingBox');
     
-    bboxes = vertcat(ROIstats.BoundingBox);
+    %Convert to usable matrices
+    letterBoxes = vertcat(ROIstats.BoundingBox);
     
-    centreX = round(mean([bboxes(:, 1), bboxes(:, 1) + bboxes(:, 3)], 2));
-    centreY = round(mean([bboxes(:, 2), bboxes(:, 2) + bboxes(:, 4)], 2));
+    %Get the centre of the bounding boxes. This is better than centroids as
+    %the centre of gravity is not the true centre. 
+    centreX = round(mean([letterBoxes(:, 1), letterBoxes(:, 1) + letterBoxes(:, 3)], 2));
+    centreY = round(mean([letterBoxes(:, 2), letterBoxes(:, 2) + letterBoxes(:, 4)], 2));
     
     figure, imshow(ROI);
-    hold on
-    plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2);
-    hold off 
+    hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2); hold off;
     
-    coeff = polyfit(centreX, centreY, 1);
+    %Calculate line of best fit coeffecient using the centre of letters
+    bestFit = polyfit(centreX, centreY, 1);
     
-    %size = ROI Width to help create linear spread
-    xFit = linspace(bestFitStart, size(ROI, 2), bestFitEnd);
-    yFit = polyval(coeff, xFit);
+    %Create linearly spaced vector of 10 sample points from 1 to width of
+    %the image 
+    xValues = linspace(1, size(ROI, 2), samplePoints);
     
-    angle = atan2d(yFit(bestFitEnd) - yFit(bestFitStart), ...
-        xFit(bestFitEnd) - xFit(bestFitStart));
+    %Estimate the values of y at x values using the best fit coeffecient 
+    %to create a line of best fit
+    yValues = polyval(bestFit, xValues);
     
-    hold on;
-    plot(xFit, yFit, 'g.-', 'MarkerSize', 15, 'LineWidth', 1);
-    title([num2str(angle), ' degrees']);
+    %Calculate the line of best fit's angle
+    angle = atan2d(yValues(samplePoints) - yValues(1), ...
+        xValues(samplePoints) - xValues(1));
+    
+    hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 15, 'LineWidth', 1), title([num2str(angle), ' degrees']);
     hold off;
     
-    if (angle > 3 || angle < -3) 
+    %Don't correct image if it is within 7.5 degrees of 0
+    %OCR is capable of reading letters most accurately at < 10 degree offset
+    if (angle > 7.5 || angle < -7.5) 
         ROI = imrotate(ROI, angle);
         figure, imshow(ROI), title('corrected')
     end
     
+    %Perform OCR on the image using MATLAB's Tesseract-OCR 3.02 implementation
+    %Specifying 'line' will ensure the best results for the cropped image
+    %Specifying the character set will reduce the chance of confusion with
+    %characters that cannot be found in dates
     ocrOutput = ocr(ROI, 'TextLayout', 'Line', 'CharacterSet', ...
         '1234567890ABCDEFGHIJLMNOPRSTUVYabcdefghijlmnoprstuvy/.-:');
     
+    %Store the detected text
     detectedText(i) = ocrOutput.Text;
 end
+loopTime = toc
 
 detectedText
 
@@ -474,15 +491,8 @@ detectedText
 %ROI = imresize(ROI, 1.2, 'bilinear'). Can crop first using:
 %https://uk.mathworks.com/matlabcentral/answers/55253-how-to-crop-an-image-automatically
 %Perform morphology to help thin-out connected characters (not much use)
-
-
-%TODO:
-%optimise ocr loop
-%test text grouping
-
-%problems with there being other picture elements in cropped area. Remove
-%objects not in bbox? Change to 'Block'?
-%problems with uneven illumination in enhanced MSER. Try tophat?
+%Reducing Black space around edges?
+%Reducing angle threshold?
 
 %letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
 %May need to get the OCR support package (visionSupportPackages) for best accuracy
@@ -492,6 +502,14 @@ detectedText
 %Sort by X/Y to get correct reading order
 
 %% Perform Text Matching using Regex
+
+%TODO:
+%test text grouping
+%test angle threshold
+%Do Regex
+%problems with there being other picture elements in cropped area. Remove
+%objects not in bbox? Change to 'Block'?
+%problems with uneven illumination in enhanced MSER. Try tophat?
 
 % May have additional text recognised. eg. descriptions/food title
 % eliminate by looking for common data formats:
