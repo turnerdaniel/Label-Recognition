@@ -1,0 +1,9 @@
+Regex Explanation:
+\d allows digits ranging from 0-9
+{m, n} matches the preceding statement as many times as possible from m to n
+Jan(?:uary) accepts either jan or january
+? is the same as {0, 1}
+?: means that the group isn't captured so it can't be referenced later
+| means OR
+[\/\\\-\. ] accepts any of the characters in the range including <space>. Some characters are escaped.
+[]| means or <nothing>
