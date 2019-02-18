@@ -24,9 +24,12 @@ clear; close all; clc;
 %Variable Renaming
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
-%%test text grouping
-%%test angle threshold
+
+%%Test text grouping - new method
+%%Test angle threshold
 %%Optimise & test Regex?
+%%Supress Warnings
+
 %problems with there being other picture elements in cropped area. Remove
 %objects not in bbox? Change to 'Block'?
 %problems with uneven illumination in enhanced MSER. Try tophat?
@@ -53,7 +56,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8 9.jpeg');
 %       ('img/370 378 960 988.jpeg');
-I = imread('img/988.jpeg');
+I = imread('img/370.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -69,8 +72,6 @@ end
 %% Image Pre-processing - Remove Noise, Increase Contrast & Sharpness
 
 %use imbothat w/ large strel to remove uneven illumination?
-%deblurring?
-%Orientation Correction?
 
 %Perform Linear Spatial Filtering to eliminate noise
 %Weiner removes gaussian & speckle noise while preserving edges by adapting
@@ -391,13 +392,16 @@ mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
 figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
 
+%Calculate new labelSizes after updating connected bounding boxes
+labelSizes = hist(labelledROI', 1:max(labelledROI));
+
 %Remove single, unconnected bounding boxes
 wordCandidates = labelSizes > 1;
 filteredTextROI = mergedTextROI(wordCandidates, :);
 
 %Remove bounding boxes that are now empty from being seperated
-validSize = sum(filteredTextROI, 2) > 0;
-filteredTextROI = filteredTextROI(validSize, :);
+%validSize = sum(filteredTextROI, 2) > 0
+%filteredTextROI = filteredTextROI(validSize, :);
 
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
