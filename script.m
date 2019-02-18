@@ -445,8 +445,8 @@ for i = 1:ROISize
     centreX = round(mean([letterBoxes(:, 1), letterBoxes(:, 1) + letterBoxes(:, 3)], 2));
     centreY = round(mean([letterBoxes(:, 2), letterBoxes(:, 2) + letterBoxes(:, 4)], 2));
     
-    figure, imshow(ROI);
-    hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2); hold off;
+    %figure, imshow(ROI);
+    %hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2); hold off;
     
     %Calculate line of best fit coeffecient using the centre of letters
     bestFit = polyfit(centreX, centreY, 1);
@@ -463,14 +463,14 @@ for i = 1:ROISize
     angle = atan2d(yValues(samplePoints) - yValues(1), ...
         xValues(samplePoints) - xValues(1));
     
-    hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 15, 'LineWidth', 1), title([num2str(angle), ' degrees']);
-    hold off;
+    %hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 15, 'LineWidth', 1), title([num2str(angle), ' degrees']);
+    %hold off;
     
     %Don't correct image if it is within 7.5 degrees of 0
     %OCR is capable of reading letters most accurately at < 10 degree offset
     if (angle > 7.5 || angle < -7.5) 
         ROI = imrotate(ROI, angle);
-        figure, imshow(ROI), title('corrected')
+        %figure, imshow(ROI), title('corrected')
     end
     
     %Perform OCR on the image using MATLAB's Tesseract-OCR 3.02 implementation
@@ -510,6 +510,41 @@ detectedText
 %problems with there being other picture elements in cropped area. Remove
 %objects not in bbox? Change to 'Block'?
 %problems with uneven illumination in enhanced MSER. Try tophat?
+
+%Formats covered by Regex:
+%DD MMM / DD MMM YY / DD MMM YYYY
+%MMM YY / MMM YYYY
+%DD/MM/YY / DD/MM/YYYY / MM/DD/YY / MM/DD/YYYY / YY/MM/DD
+%DD.MM.YY / DD.MM.YYYY / MM.DD.YY / MM.DD.YYYY / YY.MM.DD
+%DD-MM-YY / DD-MM-YYYY / MM-DD-YY / MM-DD-YYYY / YY-MM-DD
+%DD MM YY / DD MM YYYY / MM DD YY / MM DD YYYY / YY MM DD
+%DD/MMM/YY / DD/MMM/YYYY / DD.MMM.YY / DD.MMM.YYYY / DD-MMM-YY / DD-MMM-YYYY
+
+%Formats not Supported:
+%YYYY/MM/DD / YYYY.MM.DD / YYYY-MM-DD = Difficult to tell the differentiate
+%between the more popular DD-MM-YYYY format. Could be implemented by user if
+%required.
+
+%DDMMYY / DDMMYYYY = Can't differentiate from set of numbers found on 
+%barcode or the rest of the packaging
+
+regexTextDate = '(\d{1,2} ?)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)( ?(?:\d{2}){0,2}\>)';
+regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)( ?(?:\d{2}){1,2})';
+
+regexNumericDate = '(\d{1,2})([\/ \\\-\.])(\d{1,2})(\2)((?:\d{2}){1,2})';
+regexNumericTextMonth = '(\d{1,2})([\/\\\-\.])(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(\2)((?:\d{2}){1,2})';
+
+detectedText = strip(detectedText, newline);
+
+%regrexpi = case insensitive
+indexTextDate = ~cellfun('isempty', regexpi(detectedText, regexTextDate));
+indexTextYear = ~cellfun('isempty', regexpi(detectedText, regexTextYear));
+indexNumDates = ~cellfun('isempty', regexpi(detectedText, regexNumericDate));
+indexNumTextMonth = ~cellfun('isempty', regexpi(detectedText, regexNumericTextMonth));
+
+validText = find(indexTextDate | indexTextYear | indexNumDates | indexNumTextMonth)
+keptText = detectedText(validText)
+
 
 % May have additional text recognised. eg. descriptions/food title
 % eliminate by looking for common data formats:
