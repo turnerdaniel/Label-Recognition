@@ -48,7 +48,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8 9.jpeg');
 %       ('img/370 378 960 988.jpeg');
-I = imread('img/image7.jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -485,8 +485,6 @@ for i = 1:ROISize
 end
 loopTime = toc
 
-detectedText
-
 %Potential improvements include increasing the size of images: (>20px)
 %ROI = imresize(ROI, 1.2, 'bilinear'). Can crop first using:
 %https://uk.mathworks.com/matlabcentral/answers/55253-how-to-crop-an-image-automatically
@@ -506,55 +504,51 @@ detectedText
 %TODO:
 %test text grouping
 %test angle threshold
-%Do Regex
+%Optimise Regex?
 %problems with there being other picture elements in cropped area. Remove
 %objects not in bbox? Change to 'Block'?
 %problems with uneven illumination in enhanced MSER. Try tophat?
 
+%The purpose of this section is to find dates using loosely-defined regex 
+%as to avoid discounting potentially malformed dates from being shown.
+
 %Formats covered by Regex:
-%DD MMM / DD MMM YY / DD MMM YYYY
-%MMM YY / MMM YYYY
-%DD/MM/YY / DD/MM/YYYY / MM/DD/YY / MM/DD/YYYY / YY/MM/DD
-%DD.MM.YY / DD.MM.YYYY / MM.DD.YY / MM.DD.YYYY / YY.MM.DD
-%DD-MM-YY / DD-MM-YYYY / MM-DD-YY / MM-DD-YYYY / YY-MM-DD
-%DD MM YY / DD MM YYYY / MM DD YY / MM DD YYYY / YY MM DD
-%DD/MMM/YY / DD/MMM/YYYY / DD.MMM.YY / DD.MMM.YYYY / DD-MMM-YY / DD-MMM-YYYY
+%1. DD MMM / DD MMM YY / DD MMM YYYY
+%2. MMM YY / MMM YYYY
+%3. DD/MM/YY / DD/MM/YYYY / MM/DD/YY / MM/DD/YYYY / YY/MM/DD
+%4. DD.MM.YY / DD.MM.YYYY / MM.DD.YY / MM.DD.YYYY / YY.MM.DD
+%5. DD-MM-YY / DD-MM-YYYY / MM-DD-YY / MM-DD-YYYY / YY-MM-DD
+%6. DD MM YY / DD MM YYYY / MM DD YY / MM DD YYYY / YY MM DD
+%7. DD/MMM/YY / DD/MMM/YYYY / DD.MMM.YY / DD.MMM.YYYY / DD-MMM-YY / DD-MMM-YYYY
 
 %Formats not Supported:
 %YYYY/MM/DD / YYYY.MM.DD / YYYY-MM-DD = Difficult to tell the differentiate
 %between the more popular DD-MM-YYYY format. Could be implemented by user if
 %required.
-
 %DDMMYY / DDMMYYYY = Can't differentiate from set of numbers found on 
-%barcode or the rest of the packaging
+%barcode or the rest of the packaging.
 
-regexTextDate = '(\d{1,2} ?)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)( ?(?:\d{2}){0,2}\>)';
-regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)( ?(?:\d{2}){1,2})';
+%Handles formats 1 and 7 
+regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)((?:\d{2}){0,2})';
+%Handles formats 3, 4, 5 and 6
+regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)(?:\d{2}){1,2}';
+%Handles format 2
+regexNumeric = '(\d{1,2})([\/ \\\-\.])(\d{1,2})([\/ \\\-\.])((?:\d{2}){1,2})';
 
-regexNumericDate = '(\d{1,2})([\/ \\\-\.])(\d{1,2})(\2)((?:\d{2}){1,2})';
-regexNumericTextMonth = '(\d{1,2})([\/\\\-\.])(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(\2)((?:\d{2}){1,2})';
-
+%Remove newline characters from the end of the text
 detectedText = strip(detectedText, newline);
 
-%regrexpi = case insensitive
-indexTextDate = ~cellfun('isempty', regexpi(detectedText, regexTextDate));
-indexTextYear = ~cellfun('isempty', regexpi(detectedText, regexTextYear));
-indexNumDates = ~cellfun('isempty', regexpi(detectedText, regexNumericDate));
-indexNumTextMonth = ~cellfun('isempty', regexpi(detectedText, regexNumericTextMonth));
+%Perfom case-insensitive regular expression matching for dates, returning
+%the mask of any matches 
+maskTextDate = ~cellfun('isempty', regexpi(detectedText, regexTextDate));
+maskTextYear = ~cellfun('isempty', regexpi(detectedText, regexTextYear));
+maskNumeric = ~cellfun('isempty', regexpi(detectedText, regexNumeric));
 
-validText = find(indexTextDate | indexTextYear | indexNumDates | indexNumTextMonth)
-keptText = detectedText(validText)
-
-
-% May have additional text recognised. eg. descriptions/food title
-% eliminate by looking for common data formats:
-% DD/MM/YYYY | DD.MM.YYYY | DD MMM or DD JUNE or DD JULY | DD MMMMMMM, etc.
-%
-% Could also look for dates on y-axis of months of date formats...
-% If not found, could repeat ocr with new threshold?
-
-%can use strjoin to concatenate string array
+%find the index of any dates returned by the regular expressions
+validDates = find(maskTextDate | maskTextYear | maskNumeric);
+%store dates
+expiryDates = detectedText(validDates)
 
 %% Print the Date/Save to File
 
-
+%Currently have expiryDates which could be 0-N array of strings
