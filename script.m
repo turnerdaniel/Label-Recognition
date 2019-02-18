@@ -19,12 +19,17 @@
 clear; close all; clc;
 
 %TODO:
-%Implement OCR
-%Implement date recognition
+%Implement display of dates/save to file
 %Further false-positive reductions
 %Variable Renaming
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
+%%test text grouping
+%%test angle threshold
+%%Optimise & test Regex?
+%problems with there being other picture elements in cropped area. Remove
+%objects not in bbox? Change to 'Block'?
+%problems with uneven illumination in enhanced MSER. Try tophat?
 
 %Saturday Notes:
 %The skeleton implementation is good if referenced (MATLAB & journal)
@@ -501,14 +506,6 @@ loopTime = toc
 
 %% Perform Text Matching using Regex
 
-%TODO:
-%test text grouping
-%test angle threshold
-%Optimise Regex?
-%problems with there being other picture elements in cropped area. Remove
-%objects not in bbox? Change to 'Block'?
-%problems with uneven illumination in enhanced MSER. Try tophat?
-
 %The purpose of this section is to find dates using loosely-defined regex 
 %as to avoid discounting potentially malformed dates from being shown.
 
@@ -523,8 +520,8 @@ loopTime = toc
 
 %Formats not Supported:
 %YYYY/MM/DD / YYYY.MM.DD / YYYY-MM-DD = Difficult to tell the differentiate
-%between the more popular DD-MM-YYYY format. Could be implemented by user if
-%required.
+%between the more popular DD-MM-YYYY format. Could be implemented but will 
+%result in false-positives.
 %DDMMYY / DDMMYYYY = Can't differentiate from set of numbers found on 
 %barcode or the rest of the packaging.
 
@@ -552,3 +549,6 @@ expiryDates = detectedText(validDates)
 %% Print the Date/Save to File
 
 %Currently have expiryDates which could be 0-N array of strings
+%If only one date: display
+%if more than one date: display all
+%if none: display all recognised text
