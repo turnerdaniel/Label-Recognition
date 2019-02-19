@@ -27,9 +27,6 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %Variable Renaming
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
-
-%Regex needs to return just the matches
-
 %problems with there being other picture elements in cropped area. Remove
 % objects not in bbox? remove based on size? Remove all items in bounding 
 % boxes from image then crop? Remove small BBox heights in cc stage?
@@ -538,15 +535,13 @@ regexNumeric = '(\d{1,2})([\/ \\\-\.])(\d{1,2})([\/ \\\-\.])((?:\d{2}){1,2})';
 detectedText = strip(detectedText, newline);
 
 %Perfom case-insensitive regular expression matching for dates, returning
-%the mask of any matches 
-maskTextDate = ~cellfun('isempty', regexpi(detectedText, regexTextDate));
-maskTextYear = ~cellfun('isempty', regexpi(detectedText, regexTextYear));
-maskNumeric = ~cellfun('isempty', regexpi(detectedText, regexNumeric));
+%a cell array of matching text
+validTextDate = regexpi(detectedText, regexTextDate, 'match');
+validTextYear = regexpi(detectedText, regexTextYear, 'match');
+validNumeric = regexpi(detectedText, regexNumeric, 'match');
 
-%find the index of any dates returned by the regular expressions
-validDates = find(maskTextDate | maskTextYear | maskNumeric);
-%store dates
-expiryDates = detectedText(validDates)
+%concatenate matching text into string array
+expiryDates = vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:})
 
 %% Print the Date/Save to File
 
