@@ -18,6 +18,9 @@
 %Reset MATLAB environement
 clear; close all; clc;
 
+%Disable non-crticial warngings
+warning('off', 'images:initSize:adjustingMag'); %image resizing
+
 %TODO:
 %Implement display of dates/save to file
 %Further false-positive reductions
@@ -27,7 +30,6 @@ clear; close all; clc;
 
 %%Test text grouping - new method
 %%Optimise & test Regex?
-%%Supress Warnings
 
 %problems with there being other picture elements in cropped area. Remove
 %objects not in bbox? remove based on size? Remove all items in bounding 
