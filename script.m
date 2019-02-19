@@ -26,12 +26,13 @@ clear; close all; clc;
 %Optimisation (if/loops/memory)
 
 %%Test text grouping - new method
-%%Test angle threshold
 %%Optimise & test Regex?
 %%Supress Warnings
 
 %problems with there being other picture elements in cropped area. Remove
-%objects not in bbox? Change to 'Block'?
+%objects not in bbox? remove based on size? Remove all items in bounding 
+%boxes from image then crop? Remove small BBox heights in cc stage?
+
 %problems with uneven illumination in enhanced MSER. Try tophat?
 
 %Saturday Notes:
@@ -56,7 +57,7 @@ clear; close all; clc;
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8 9.jpeg');
 %       ('img/370 378 960 988.jpeg');
-I = imread('img/370.jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -455,7 +456,7 @@ for i = 1:ROISize
     centreY = round(mean([letterBoxes(:, 2), letterBoxes(:, 2) + letterBoxes(:, 4)], 2));
     
     %figure, imshow(ROI);
-    %hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 2); hold off;
+    %hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 1); hold off;
     
     %Calculate line of best fit coeffecient using the centre of letters
     bestFit = polyfit(centreX, centreY, 1);
@@ -472,7 +473,7 @@ for i = 1:ROISize
     angle = atan2d(yValues(samplePoints) - yValues(1), ...
         xValues(samplePoints) - xValues(1));
     
-    %hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 15, 'LineWidth', 1), title([num2str(angle), ' degrees']);
+    %hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 10, 'LineWidth', 1), title([num2str(angle), ' degrees']);
     %hold off;
     
     %Don't correct image if it is within 7.5 degrees of 0
@@ -500,11 +501,10 @@ loopTime = toc
 %Perform morphology to help thin-out connected characters (not much use)
 %Reducing Black space around edges?
 %Reducing angle threshold?
+%Preventing other objects from being cropped - **remove based on size? remove
+%all items in bounding boxes from image then crop?
 
-%letters/numbers found in dates (1234567890 abcdefghij_lmnop_rstuv__y_ /.)
-%May need to get the OCR support package (visionSupportPackages) for best accuracy
 %OCR w/ Temporal Fusion (takes OCR across a range of different frames)
-%Rotate to minimise BBox size & get correct orienttion
 %In case of split, Group together text on same y axis and close x axis
 %Sort by X/Y to get correct reading order
 
