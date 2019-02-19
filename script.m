@@ -28,7 +28,7 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
 
-%%Optimise & test Regex?
+%Regex needs to return just the matches
 
 %problems with there being other picture elements in cropped area. Remove
 % objects not in bbox? remove based on size? Remove all items in bounding 
@@ -512,8 +512,8 @@ loopTime = toc
 %as to avoid discounting potentially malformed dates from being shown.
 
 %Formats covered by Regex:
-%1. DD MMM / DD MMM YY / DD MMM YYYY
-%2. MMM YY / MMM YYYY
+%1. DD MMM / DD MMM YY / DD MMM YYYY / DDMMMYY / DDMMMYYYY
+%2. MMM YY / MMM YYYY / MMMYY / MMMYYYY / MMM-YY / MMM-YYYY
 %3. DD/MM/YY / DD/MM/YYYY / MM/DD/YY / MM/DD/YYYY / YY/MM/DD
 %4. DD.MM.YY / DD.MM.YYYY / MM.DD.YY / MM.DD.YYYY / YY.MM.DD
 %5. DD-MM-YY / DD-MM-YYYY / MM-DD-YY / MM-DD-YYYY / YY-MM-DD
@@ -521,7 +521,7 @@ loopTime = toc
 %7. DD/MMM/YY / DD/MMM/YYYY / DD.MMM.YY / DD.MMM.YYYY / DD-MMM-YY / DD-MMM-YYYY
 
 %Formats not Supported:
-%YYYY/MM/DD / YYYY.MM.DD / YYYY-MM-DD = Difficult to tell the differentiate
+%YYYY/MM/DD / YYYY.MM.DD / YYYY-MM-DD = Difficult to differentiate
 %between the more popular DD-MM-YYYY format. Could be implemented but will 
 %result in false-positives.
 %DDMMYY / DDMMYYYY = Can't differentiate from set of numbers found on 
@@ -529,9 +529,9 @@ loopTime = toc
 
 %Handles formats 1 and 7 
 regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)((?:\d{2}){0,2})';
-%Handles formats 3, 4, 5 and 6
+%Handles formats 2
 regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)(?:\d{2}){1,2}';
-%Handles format 2
+%Handles format 3, 4, 5 and 6
 regexNumeric = '(\d{1,2})([\/ \\\-\.])(\d{1,2})([\/ \\\-\.])((?:\d{2}){1,2})';
 
 %Remove newline characters from the end of the text
