@@ -28,13 +28,11 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
 
-%%Test text grouping - new method
 %%Optimise & test Regex?
 
 %problems with there being other picture elements in cropped area. Remove
-%objects not in bbox? remove based on size? Remove all items in bounding 
-%boxes from image then crop? Remove small BBox heights in cc stage?
-
+% objects not in bbox? remove based on size? Remove all items in bounding 
+% boxes from image then crop? Remove small BBox heights in cc stage?
 %problems with uneven illumination in enhanced MSER. Try tophat?
 
 %Saturday Notes:
@@ -57,9 +55,9 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4 5 6 7 8 9.jpeg');
+%       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 960 988.jpeg');
-I = imread('img/988.jpeg');
+I = imread('img/image3.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -376,7 +374,9 @@ for k = 1:maxComponents
             %a new 'label' above max value
             labelledROI(id) = max(labelledROI) + 1;
             %Add new value to the end of component size
+            %*********************************
             labelSizes(size(labelSizes, 2) + 1) = 1;
+            %*********************************
         end
     end
 end
@@ -395,16 +395,12 @@ mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
 figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
 
-%Calculate new labelSizes after updating connected bounding boxes
+%Calculate ssize of labels after updating connected bounding boxes
 labelSizes = hist(labelledROI', 1:max(labelledROI));
 
 %Remove single, unconnected bounding boxes
 wordCandidates = labelSizes > 1;
 filteredTextROI = mergedTextROI(wordCandidates, :);
-
-%Remove bounding boxes that are now empty from being seperated
-%validSize = sum(filteredTextROI, 2) > 0
-%filteredTextROI = filteredTextROI(validSize, :);
 
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
