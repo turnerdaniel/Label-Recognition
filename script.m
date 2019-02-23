@@ -22,12 +22,15 @@ clear; close all; clc;
 warning('off', 'images:initSize:adjustingMag'); %image resizing
 
 %TODO:
-%Implement display of dates/save to file
 %Further false-positive reductions
 %Variable Renaming
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
 %problems with uneven illumination in enhanced MSER. Try tophat?
+
+%regex tuning
+%file/comment re-structuring
+%image testing
 
 %Saturday Notes:
 %The skeleton implementation is good if referenced (MATLAB & journal)
@@ -474,8 +477,8 @@ for i = 1:ROISize
     centreX = round(mean([letterBoxes(:, 1), letterBoxes(:, 1) + letterBoxes(:, 3)], 2));
     centreY = round(mean([letterBoxes(:, 2), letterBoxes(:, 2) + letterBoxes(:, 4)], 2));
     
-    figure, imshow(ROI);
-    hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 1); hold off;
+    %figure, imshow(ROI);
+    %hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 1); hold off;
     
     %Calculate line of best fit coeffecient using the centre of letters
     bestFit = polyfit(centreX, centreY, 1);
@@ -492,14 +495,14 @@ for i = 1:ROISize
     angle = atan2d(yValues(samplePoints) - yValues(1), ...
         xValues(samplePoints) - xValues(1));
     
-    hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 10, 'LineWidth', 1), title([num2str(angle), ' degrees']);
-    hold off;
+    %hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 10, 'LineWidth', 1), title([num2str(angle), ' degrees']);
+    %hold off;
     
     %Don't correct image if it is within 7.5 degrees of 0
     %OCR is capable of reading letters most accurately at < 10 degree offset
     if (angle > 7.5 || angle < -7.5) 
         ROI = imrotate(ROI, angle);
-        figure, imshow(ROI), title('corrected')
+        %figure, imshow(ROI), title('corrected')
     end
     
     %Perform OCR on the image using MATLAB's Tesseract-OCR 3.02 implementation
@@ -553,8 +556,7 @@ regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|A
 %Handles formats 2
 regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)(?:\d{2}){1,2}';
 %Handles format 3, 4, 5 and 6
-regexNumeric = '(\d{1,2})([\/ \\\-\.])(\d{1,2})([\/ \\\-\.])((?:\d{2}){1,2})';
-%change to \2
+regexNumeric = '(\d{1,2})([\/\\\-\. ])(\d{1,2})(\2)((?:\d{2}){1,2})';
 
 %Remove newline characters from the end of the text
 detectedText = strip(detectedText, newline);
@@ -566,7 +568,7 @@ validTextYear = regexpi(detectedText, regexTextYear, 'match');
 validNumeric = regexpi(detectedText, regexNumeric, 'match');
 
 %concatenate matching text into string array
-expiryDates = vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:});
+expiryDates = vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:})
 
 %% Print the Date/Save to File
 
