@@ -27,10 +27,6 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %Variable Renaming
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
-
-%problems with there being other picture elements in cropped area. Remove
-% objects not in bbox? remove based on size? Remove all items in bounding 
-% boxes from image then crop? Remove small BBox heights in cc stage?
 %problems with uneven illumination in enhanced MSER. Try tophat?
 
 %Saturday Notes:
@@ -61,7 +57,9 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 844 960 988.jpeg');
-I = imread('img/988.jpeg');
+imageFile = '988.jpeg';
+
+I = imread(fullfile('img', imageFile));
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -516,8 +514,6 @@ for i = 1:ROISize
 end
 loopTime = toc
 
-detectedText
-
 %Potential improvements include increasing the size of images: (>20px)
 %ROI = imresize(ROI, 1.2, 'bilinear'). Can crop first using:
 %https://uk.mathworks.com/matlabcentral/answers/55253-how-to-crop-an-image-automatically
@@ -560,7 +556,6 @@ regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)
 regexNumeric = '(\d{1,2})([\/ \\\-\.])(\d{1,2})([\/ \\\-\.])((?:\d{2}){1,2})';
 %change to \2
 
-
 %Remove newline characters from the end of the text
 detectedText = strip(detectedText, newline);
 
@@ -571,11 +566,39 @@ validTextYear = regexpi(detectedText, regexTextYear, 'match');
 validNumeric = regexpi(detectedText, regexNumeric, 'match');
 
 %concatenate matching text into string array
-expiryDates = vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:})
+expiryDates = vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:});
 
 %% Print the Date/Save to File
 
-%Currently have expiryDates which could be 0-N array of strings
-%If only one date: display
-%if more than one date: display all
-%if none: display all recognised text
+%Check to see if dates have been detected
+if (size(expiryDates, 1) > 0)
+    %create message holding the detected dates
+    data = expiryDates;
+    caption = 'Success';
+    message = (['Managed to find the following expiry dates:'; data]);
+else
+    %create message holding all detected text
+    data = detectedText;
+    caption = 'Error!';
+    message = (['Couldn''t find any expiry dates. Here''s all the text that was found:'; ...
+        data]);
+end
+
+%Create message box that displays message w/ option to save to file
+buttonPress = questdlg(message, caption, 'Okay', 'Save...', 'Okay');
+
+%Check if save button is pressed
+if strcmpi(buttonPress, 'Save...')
+        %Present user with 'Save As' dialog box
+        [file, path] = uiputfile([extractBefore(imageFile, '.'), '-detections.txt']);
+        %Check that the a destination has been selected
+        if (~isequal(file, 0))
+            %Write detected text/dates to file
+            fileID = fopen(fullfile(path, file), 'w');
+            fprintf(fileID, '%s\n', data);
+            fclose(fileID);
+        end
+end
+
+%Output dates/text in the command window, too
+fprintf('%s\n', message);
