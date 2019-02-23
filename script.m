@@ -27,9 +27,7 @@ warning('off', 'images:initSize:adjustingMag');
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
 %problems with uneven illumination in enhanced MSER. Try tophat?
-
-%Add comments
-%image testing
+%Image Testing!!!
 
 %% Read image
 
@@ -44,9 +42,11 @@ warning('off', 'images:initSize:adjustingMag');
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 844 960 988.jpeg');
-imageFile = '988.jpeg';
 
-I = imread(fullfile('img', imageFile));
+imageFile = 'image9.jpeg';
+I = imread(fullfile('samples', imageFile));
+
+%I = imread('dataset\368.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -488,10 +488,10 @@ for i = 1:ROISize
     end
     
     %Perform OCR on the image using MATLAB's Tesseract-OCR 3.02 implementation
-    %Specifying 'line' will ensure the best results for the cropped image
+    %Specifying 'Block' will ensure that it looks for one or more horizontal text lines
     %Specifying the character set will reduce the chance of confusion with
     %characters that cannot be found in dates
-    ocrOutput = ocr(ROI, 'TextLayout', 'Line', 'CharacterSet', ...
+    ocrOutput = ocr(ROI, 'TextLayout', 'Block', 'CharacterSet', ...
         '1234567890ABCDEFGHIJLMNOPRSTUVYabcdefghijlmnoprstuvy/.-:');
     
     %Store the detected text
@@ -499,6 +499,7 @@ for i = 1:ROISize
 end
 loopTime = toc
 
+detectedText
 %% Perform Text Matching using Regex
 
 %Formats covered by Regex:
