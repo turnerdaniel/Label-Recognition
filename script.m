@@ -7,7 +7,7 @@
 %Li, Y. and Lu, H. (2012) Scene Text Detection via Stroke Width. In:
 %21st International Conference on Pattern Recognition (ICPR 2012),
 %Tsukuba, Japan, 11-15 November. IEEE, 681–684. Available from 
-%https://ieeexplore.ieee.org/document/6460226 [accessed 10/2/2019].
+%https://ieeexplore.ieee.org/document/6460226 [accessed 10 February 2019].
 
 %Candidate Text Grouping Algorithm:
 %Mathworks (undated) Automatically Detect and Recognize Text in Natural
@@ -18,8 +18,8 @@
 %Reset MATLAB environement
 clear; close all; clc;
 
-%Disable non-crticial warngings
-warning('off', 'images:initSize:adjustingMag'); %image resizing
+%Disable non-criticial warnings for image resizing
+warning('off', 'images:initSize:adjustingMag'); 
 
 %TODO:
 %Further false-positive reductions
@@ -28,28 +28,12 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %Optimisation (if/loops/memory)
 %problems with uneven illumination in enhanced MSER. Try tophat?
 
-%regex tuning
-%file/comment re-structuring
+%Add comments
 %image testing
-
-%Saturday Notes:
-%The skeleton implementation is good if referenced (MATLAB & journal)
-%   & effecient
-%The CC method does have slight disadvanatges (sometimes wrong, thinning,
-%   more difficult to destinguish from non-text, interfere w/ barcode)
-
-%Sunday Notes:
-%Ensure the citations are jusitified in the report
-%Maybe create horz & vert aspect Ratio for more fine-tuning if needed
-
-%Monday Notes:
-%Potential improvements include making bbox width of 1 letter (not 1/2)
-%SWT Threshold needs to be tested depending on whether we want to preserve
-%as much text as possible or leave just the expiry date.
 
 %% Read image
 
-% load('groundTruth.mat');
+% load('verification/groundTruth.mat');
 % val = 2;
 % Don't have local pathnames...
 % gTruth.DataSource.Source{val};
@@ -76,8 +60,6 @@ end
 [imageHeight, imageWidth] = size(grey);
 
 %% Image Pre-processing - Remove Noise, Increase Contrast & Sharpness
-
-%use imbothat w/ large strel to remove uneven illumination?
 
 %Perform Linear Spatial Filtering to eliminate noise
 %Weiner removes gaussian & speckle noise while preserving edges by adapting
@@ -124,8 +106,6 @@ mserBW(ind) = true;
 figure, imshow(mserBW), title('logical MSER Image');
 
 %% Image Post-Processing - Opening, 
-%Watershed may be good?
-%bwmorph for thinning?
 
 seSquare = strel('square', 3);
 %seDiamond = strel('diamond', 1);
@@ -144,7 +124,9 @@ figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
 %% Connected Component Enhanced MSER (CCEMSER)
 
+%Get the image containg solely the object and its bounding box
 mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
+%Initialise variables
 totalObjects = size(mserStats, 1);
 CCadjustedImage = false(imageHeight, imageWidth);
 
@@ -158,7 +140,7 @@ for i = 1:totalObjects
     %Crop the greyscale image
     greyImage = imcrop(greySharp, imageBBox);
     
-    %theshold the cropped greyscale image using Otsu's Method
+    %Threshold the cropped greyscale image using Otsu's Method
     binaryImage = imbinarize(greyImage);  
     
     %Perform CC analysis to find most likely text (BoW, DoL text)
@@ -192,7 +174,7 @@ for i = 1:totalObjects
             keepImage = image & binaryImage;
         end
     else
-        %use regular image as last resort
+        %Use regular image as last resort
         keepImage = image & binaryImage;
     end
     
@@ -217,6 +199,7 @@ figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
 % Aspect Ratio = mostly square (vertical & horizontal)
 % Extent = have very high or very low occupation of bounding box (O vs l)
 
+%Label the image and get the properties of each object
 mserLabel = bwlabel(clearSmallHoles);
 mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
     'EulerNumber', 'Extent', 'Solidity');
@@ -227,7 +210,8 @@ bbWidths = bBoxes(:, 3)';
 bbHeights = bBoxes(:, 4)';
 aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
 
-%Max euler = -1. However, is affected by noise so change to -2
+%Remove blobs that have more than 3 holes in them. Need to compensate for
+%noise
 validEulerNo = [mserStats.EulerNumber] >= -2;
 %Remove blobs that are perfect lines (eg. barcodes)
 validEccentricity = [mserStats.Eccentricity] < 0.99;
@@ -262,12 +246,15 @@ figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
 
-swtStats = regionprops(keptObjectsImage, 'Image');
+%Label the image and get the properties of each object
 swtLabel = bwlabel(keptObjectsImage);
+swtStats = regionprops(keptObjectsImage, 'Image');
 
+%Initialise variables
 totalObjects = size(swtStats, 1);
 swtVariation = zeros(1, totalObjects);
 
+%Define the maximum variation in stroke width for letters
 %Lowest = 0.375
 swtVariationThresh = 0.4;
 
@@ -293,30 +280,24 @@ for i = 1:totalObjects
 end
 loopTime = toc
 
+%Find stroke widths that are below the variation threshold
 validStrokeWidths = swtVariation < swtVariationThresh;
+%Find the index of these objects
 keptSWT = find(validStrokeWidths);
+%Create an image made of objects that are below the variation threshold
 keptSWTImage = ismember(swtLabel, keptSWT);
 
 figure, imshow(keptSWTImage), title('Filter images using SWT');
 %figure, plot(swtVariation), yline(swtVariationThresh); title('SW Variation in Image');
 
-%Get MSER regions within the ROI bbox?
-%Need to use MSER cc regions from the start / could just do for this step?
-
 %% Rule-Based Candidate Text Grouping
 
-%Display potential text regions
+%Get the bounding box for each object
 textStats = regionprops(keptSWTImage, 'BoundingBox');
 textROI = vertcat(textStats.BoundingBox);
+%Insert the bounding boxes onto the image and display
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
 figure, imshow(textROIImage), title('Text ROI''s');
-
-% textSe = strel('line', 25, 0);
-% text = imclose(keptSWTImage, textSe);
-% regionStats = regionprops(text, 'BoundingBox');
-% dilatedROI = vertcat(regionStats.BoundingBox);
-% dilatedTextROIImage = insertShape(I, 'Rectangle', dilatedROI, 'LineWidth', 2);
-% figure, imshow(dilatedTextROIImage), title('Expanded Text ROI');
 
 %Get bounding box sizes
 roiX = textROI(:, 1);
@@ -325,7 +306,7 @@ roiW = textROI(:, 3);
 roiH = textROI(:, 4);
 
 %Expand ROI by half the character width in horizontal direction since dates
-%are always vertically aligned
+%are typically vertically aligned
 expandedX = roiX - (roiW/2);
 expandedW = 2 * roiW;
 
@@ -356,23 +337,23 @@ maxComponents = max(labelledROI);
 for k = 1:maxComponents
     %find the index of connected bounding boxes
     connectedBoxes = find(labelledROI == k);
-    %get the bounding box heights
+    %Get the bounding box heights
     heightOfBoxes = roiH(connectedBoxes);
     
     %Ensure that joined regions have similar heights
     meanHeight = mean(heightOfBoxes);
     meanError = meanHeight/2;
     
-    %create mask of bounding boxes that don't meet the criteria
+    %Create mask of bounding boxes that don't meet the criteria
     validBoxes = heightOfBoxes > meanHeight - meanError & heightOfBoxes < meanHeight + meanError;
     discardHeight = find(validBoxes == 0);
     
-    %get the index of bounding boxes that don't meet the criteria
+    %Get the index of bounding boxes that don't meet the criteria
     invalidHeight = connectedBoxes(discardHeight);
     
     %Check that there the validHeights matrix is not empty
     if (~isempty(invalidHeight))
-        %loop through invalid indexes
+        %Loop through invalid indexes
         for i = 1:size(invalidHeight, 2)
             id = invalidHeight(i);
             %Seperate the component into a new indices by creating
@@ -383,7 +364,7 @@ for k = 1:maxComponents
 end
 loopTime = toc
 
-%Find the minimum values of x & y and the maximum values of w & h for each 
+%Find the minimum values of X & Y and the maximum values of W & H for each 
 %of the intersecting bounding boxes to form encompassing bounding boxes
 labelledROI = labelledROI';
 x1 = accumarray(labelledROI, expandedX, [], @min);
@@ -391,7 +372,7 @@ y1 = accumarray(labelledROI, roiY, [], @min);
 x2 = accumarray(labelledROI, expandedX + expandedW, [], @max);
 y2 = accumarray(labelledROI, roiY + roiH, [], @max);
 
-%Create merged bounding boxes in appropriate format
+%Create merged bounding boxes in [X Y H W] format
 mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
 figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
@@ -408,7 +389,7 @@ removePixelsROI = mergedTextROI(~wordCandidates, :);
 %Ensure the bounding box isn't empty
 removePixelsROI(all(~removePixelsROI, 2), : ) = [];
 
-%Get the [x y h w] values of bounding box
+%Get the [X Y H W] values of bounding box accounting for real values
 removeMinX = ceil(removePixelsROI(:, 1));
 removeMaxX = round(removeMinX + removePixelsROI(:, 3));
 removeMinY = ceil(removePixelsROI(:, 2));
@@ -423,7 +404,7 @@ end
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
 
-%Expand a little vertically to fully contain the height of each word
+%Expand a the bounding box vertically to fully contain the text's height 
 pixelExpansion = 2;
 expandedY = filteredTextROI(:, 2) - pixelExpansion;
 expandedH = filteredTextROI(:, 4) + (2 * pixelExpansion);
@@ -438,9 +419,9 @@ expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
 expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
 figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
 
-%% Prepares for and Performs Optical Character Recognition (OCR)
+%% Perform Optical Character Recognition (OCR)
 
-%Get ROIs
+%Get text ROIs to perform OCR on
 ocrROI = [expandedFilteredTextROI(:, 1), expandedFilteredTextROI(:, 2), ...
     expandedFilteredTextROI(:, 3), expandedFilteredTextROI(:, 4)];
 
@@ -465,11 +446,12 @@ for i = 1:ROISize
     
     %Check that there is more than one object in image
     if (size(ROIstats, 1) <= 1)
-        %skip iteration
+        %skip iteration since a date won't be one letter long & can't
+        %interpolate a line of best fit from one point
         continue
     end
     
-    %Convert to usable matrices
+    %Convert to 4xN matrix for operations
     letterBoxes = vertcat(ROIstats.BoundingBox);
     
     %Get the centre of the bounding boxes. This is better than centroids as
@@ -517,23 +499,7 @@ for i = 1:ROISize
 end
 loopTime = toc
 
-%Potential improvements include increasing the size of images: (>20px)
-%ROI = imresize(ROI, 1.2, 'bilinear'). Can crop first using:
-%https://uk.mathworks.com/matlabcentral/answers/55253-how-to-crop-an-image-automatically
-%Perform morphology to help thin-out connected characters (not much use)
-%Reducing Black space around edges?
-%Reducing angle threshold?
-%Preventing other objects from being cropped - **remove based on size? remove
-%all items in bounding boxes from image then crop?
-
-%OCR w/ Temporal Fusion (takes OCR across a range of different frames)
-%In case of split, Group together text on same y axis and close x axis
-%Sort by X/Y to get correct reading order
-
 %% Perform Text Matching using Regex
-
-%The purpose of this section is to find dates using loosely-defined regex 
-%as to avoid discounting potentially malformed dates from being shown.
 
 %Formats covered by Regex:
 %1. DD MMM / DD MMM YY / DD MMM YYYY / DDMMMYY / DDMMMYYYY
@@ -546,8 +512,7 @@ loopTime = toc
 
 %Formats not Supported:
 %YYYY/MM/DD / YYYY.MM.DD / YYYY-MM-DD = Difficult to differentiate
-%between the more popular DD-MM-YYYY format. Could be implemented but will 
-%result in false-positives.
+%between the more popular DD-MM-YYYY format resulting in false positives.
 %DDMMYY / DDMMYYYY = Can't differentiate from set of numbers found on 
 %barcode or the rest of the packaging.
 
