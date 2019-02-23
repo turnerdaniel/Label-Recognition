@@ -27,6 +27,7 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 %Variable Renaming
 %Parameter Tweaking
 %Optimisation (if/loops/memory)
+
 %problems with there being other picture elements in cropped area. Remove
 % objects not in bbox? remove based on size? Remove all items in bounding 
 % boxes from image then crop? Remove small BBox heights in cc stage?
@@ -49,12 +50,18 @@ warning('off', 'images:initSize:adjustingMag'); %image resizing
 
 %% Read image
 
+% load('groundTruth.mat');
+% val = 2;
+% Don't have local pathnames...
+% gTruth.DataSource.Source{val};
+% [precision, recall] = bboxPrecisionRecall(expandedFilteredTextROI, gTruth.LabelData{val, 1}{1})
+
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
 %       ('img/10 MAR(1820).jpeg');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
-%       ('img/370 378 960 988.jpeg');
-I = imread('img/image3.jpeg');
+%       ('img/370 378 844 960 988.jpeg');
+I = imread('img/988.jpeg');
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -339,7 +346,7 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 
 %Create node graph of connected Bounding Boxes & find the index of boxes
 %that intersect
-[labelledROI, labelSizes] = conncomp(graph(overlapRatio));
+labelledROI = conncomp(graph(overlapRatio));
 
 tic
 %Ensure that there is similarity between connected letters
@@ -370,10 +377,6 @@ for k = 1:maxComponents
             %Seperate the component into a new indices by creating
             %a new 'label' above max value
             labelledROI(id) = max(labelledROI) + 1;
-            %Add new value to the end of component size
-            %*********************************
-            labelSizes(size(labelSizes, 2) + 1) = 1;
-            %*********************************
         end
     end
 end
@@ -392,12 +395,29 @@ mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
 figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
 
-%Calculate ssize of labels after updating connected bounding boxes
+%Calculate size of labels after updating connected bounding boxes
 labelSizes = hist(labelledROI', 1:max(labelledROI));
 
 %Remove single, unconnected bounding boxes
 wordCandidates = labelSizes > 1;
 filteredTextROI = mergedTextROI(wordCandidates, :);
+
+%Get the bounding boxes of removed objects
+removePixelsROI = mergedTextROI(~wordCandidates, :);
+%Ensure the bounding box isn't empty
+removePixelsROI(all(~removePixelsROI, 2), : ) = [];
+
+%Get the [x y h w] values of bounding box
+removeMinX = ceil(removePixelsROI(:, 1));
+removeMaxX = round(removeMinX + removePixelsROI(:, 3));
+removeMinY = ceil(removePixelsROI(:, 2));
+removeMaxY = round(removeMinY + removePixelsROI(:, 4));
+
+%Remove single, unconnected bounding boxes for binary image
+removeROIImage = keptSWTImage;
+for i = 1:size(removePixelsROI, 1)
+    removeROIImage(removeMinY(i):removeMaxY(i), removeMinX(i):removeMaxX(i)) = 0; 
+end
 
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
@@ -432,7 +452,7 @@ tic
 %Loop through candidate words
 for i = 1:ROISize
     %Crop binary image using expanded bounding boxes
-    ROI = imcrop(keptSWTImage, [ocrROI(i, 1), ocrROI(i, 2), ocrROI(i, 3), ...
+    ROI = imcrop(removeROIImage, [ocrROI(i, 1), ocrROI(i, 2), ocrROI(i, 3), ...
         ocrROI(i, 4)]);
 
     %Remove pixels touching the edge since they are probably not related to
@@ -442,6 +462,12 @@ for i = 1:ROISize
     %Get minimum Bounding Boxes for each letter
     ROIstats = regionprops(ROI, 'BoundingBox');
     
+    %Check that there is more than one object in image
+    if (size(ROIstats, 1) <= 1)
+        %skip iteration
+        continue
+    end
+    
     %Convert to usable matrices
     letterBoxes = vertcat(ROIstats.BoundingBox);
     
@@ -450,8 +476,8 @@ for i = 1:ROISize
     centreX = round(mean([letterBoxes(:, 1), letterBoxes(:, 1) + letterBoxes(:, 3)], 2));
     centreY = round(mean([letterBoxes(:, 2), letterBoxes(:, 2) + letterBoxes(:, 4)], 2));
     
-    %figure, imshow(ROI);
-    %hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 1); hold off;
+    figure, imshow(ROI);
+    hold on; plot(centreX, centreY, 'b+', 'MarkerSize', 5, 'LineWidth', 1); hold off;
     
     %Calculate line of best fit coeffecient using the centre of letters
     bestFit = polyfit(centreX, centreY, 1);
@@ -468,14 +494,14 @@ for i = 1:ROISize
     angle = atan2d(yValues(samplePoints) - yValues(1), ...
         xValues(samplePoints) - xValues(1));
     
-    %hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 10, 'LineWidth', 1), title([num2str(angle), ' degrees']);
-    %hold off;
+    hold on; plot(xValues, yValues, 'g.-', 'MarkerSize', 10, 'LineWidth', 1), title([num2str(angle), ' degrees']);
+    hold off;
     
     %Don't correct image if it is within 7.5 degrees of 0
     %OCR is capable of reading letters most accurately at < 10 degree offset
     if (angle > 7.5 || angle < -7.5) 
         ROI = imrotate(ROI, angle);
-        %figure, imshow(ROI), title('corrected')
+        figure, imshow(ROI), title('corrected')
     end
     
     %Perform OCR on the image using MATLAB's Tesseract-OCR 3.02 implementation
@@ -489,6 +515,8 @@ for i = 1:ROISize
     detectedText(i) = ocrOutput.Text;
 end
 loopTime = toc
+
+detectedText
 
 %Potential improvements include increasing the size of images: (>20px)
 %ROI = imresize(ROI, 1.2, 'bilinear'). Can crop first using:
@@ -530,6 +558,8 @@ regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|A
 regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)(?:\d{2}){1,2}';
 %Handles format 3, 4, 5 and 6
 regexNumeric = '(\d{1,2})([\/ \\\-\.])(\d{1,2})([\/ \\\-\.])((?:\d{2}){1,2})';
+%change to \2
+
 
 %Remove newline characters from the end of the text
 detectedText = strip(detectedText, newline);
