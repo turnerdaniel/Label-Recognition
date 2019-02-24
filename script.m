@@ -34,6 +34,7 @@ warning('off', 'images:initSize:adjustingMag');
 %Need to test accuracy of detection
 %Need to get overall accuracy
 %See if we can maximise precision a bit (SWT, expansion, etc...)
+%Rename sample images & revert changes?
 %MORE...
 
 %put code into functions
