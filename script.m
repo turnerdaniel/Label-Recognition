@@ -43,10 +43,11 @@ warning('off', 'images:initSize:adjustingMag');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 844 960 988.jpeg');
 
-imageFile = 'image9.jpeg';
-I = imread(fullfile('samples', imageFile));
+%Changes: closing in CCMSER & remove space from regex dd mm yyyy
+%Could repair 1020... images
 
-%I = imread('dataset\368.jpeg');
+imageFile = 'image3.jpeg';
+I = imread(fullfile('samples', imageFile));
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -73,10 +74,10 @@ greyContrastStretch = imadjust(greyWeiner);
 greySharp = imsharpen(greyContrastStretch);
 
 %Display pre-processing effects
-figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
-subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
-subplot(2,2,3), imshow(greyContrastStretch), title('Contrast Stretching');
-subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
+%figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
+%subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
+%subplot(2,2,3), imshow(greyContrastStretch), title('Contrast Stretching');
+%subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
 
 %% Maximally Stable Extremal Regions (MSER)
 
@@ -91,11 +92,11 @@ mserRegions = detectMSERFeatures(greySharp, 'RegionAreaRange', ...
 mserPixels = vertcat(cell2mat(mserRegions.PixelList));
 
 %Display MSER Regions overlay on image
-figure, imshow(I);
-hold on;
-plot(mserRegions, 'showPixelList', true, 'showEllipses', false);
-title('MSER Regions');
-hold off;
+%figure, imshow(I);
+%hold on;
+%plot(mserRegions, 'showPixelList', true, 'showEllipses', false);
+%title('MSER Regions');
+%hold off;
 
 %Initialise logical image with necessary dimensions
 mserBW = false(imageHeight, imageWidth);
@@ -103,7 +104,7 @@ mserBW = false(imageHeight, imageWidth);
 ind = sub2ind(size(mserBW), mserPixels(:,2), mserPixels(:,1));
 %assign true to co-ordinates that match
 mserBW(ind) = true;
-figure, imshow(mserBW), title('logical MSER Image');
+%figure, imshow(mserBW), title('logical MSER Image');
 
 %% Image Post-Processing - Opening, 
 
@@ -113,14 +114,14 @@ seSquare = strel('square', 3);
 %Opening to remove small joins
 opened = imopen(mserBW, seSquare);
 
-figure, subplot(1,2,1), imshow(mserBW), title('original');
-subplot(1,2,2), imshow(opened), title('Opened');
+%figure, subplot(1,2,1), imshow(mserBW), title('Original');
+%subplot(1,2,2), imshow(opened), title('Opened');
 
 %Remove small blobs
 clearNoise = bwareaopen(opened, 100); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
-figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
+%figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
 
 %% Connected Component Enhanced MSER (CCEMSER)
 
@@ -184,13 +185,16 @@ for i = 1:totalObjects
 end
 loopTime = toc
 
-figure, imshow(CCadjustedImage), title('CC Adjustment');
+%figure, imshow(CCadjustedImage), title('CC Adjustment');
+
+%Close small gaps ################################
+%CCadjustedImage = imclose(CCadjustedImage, seSquare);
 
 %Remove small blobs
 clearNoise = bwareaopen(CCadjustedImage, 20); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
-figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
+%figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
 
 %% Remove Unlikely Candidates using Region Properties
 
@@ -242,7 +246,7 @@ keptObjectsImage = ismember(mserLabel, keptObjects);
 % figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
 % figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
 
-figure, imshow(keptObjectsImage), title('Filter images using text properties')
+%figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
 %% Stroke Width Transform
 
@@ -287,7 +291,7 @@ keptSWT = find(validStrokeWidths);
 %Create an image made of objects that are below the variation threshold
 keptSWTImage = ismember(swtLabel, keptSWT);
 
-figure, imshow(keptSWTImage), title('Filter images using SWT');
+%figure, imshow(keptSWTImage), title('Filter images using SWT');
 %figure, plot(swtVariation), yline(swtVariationThresh); title('SW Variation in Image');
 
 %% Rule-Based Candidate Text Grouping
@@ -297,7 +301,7 @@ textStats = regionprops(keptSWTImage, 'BoundingBox');
 textROI = vertcat(textStats.BoundingBox);
 %Insert the bounding boxes onto the image and display
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
-figure, imshow(textROIImage), title('Text ROI''s');
+%figure, imshow(textROIImage), title('Text ROI''s');
 
 %Get bounding box sizes
 roiX = textROI(:, 1);
@@ -317,7 +321,7 @@ expandedW = min(expandedW, imageWidth - expandedX);
 %Create expanded bounding boxes
 expandedTextROI = [expandedX, roiY, expandedW, roiH];
 expandedTextROIImage = insertShape(I, 'Rectangle', expandedTextROI, 'LineWidth', 2);
-figure, imshow(expandedTextROIImage), title('Expanded Text ROI');
+%figure, imshow(expandedTextROIImage), title('Expanded Text ROI');
 
 %Calculate the ratio of union between bounding boxes
 overlapRatio = bboxOverlapRatio(expandedTextROI, expandedTextROI, 'Union');
@@ -375,7 +379,7 @@ y2 = accumarray(labelledROI, roiY + roiH, [], @max);
 %Create merged bounding boxes in [X Y H W] format
 mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
-figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
+%figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
 
 %Calculate size of labels after updating connected bounding boxes
 labelSizes = hist(labelledROI', 1:max(labelledROI));
@@ -402,7 +406,7 @@ for i = 1:size(removePixelsROI, 1)
 end
 
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
-figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
+%figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
 
 %Expand a the bounding box vertically to fully contain the text's height 
 pixelExpansion = 2;
@@ -534,7 +538,7 @@ validTextYear = regexpi(detectedText, regexTextYear, 'match');
 validNumeric = regexpi(detectedText, regexNumeric, 'match');
 
 %concatenate matching text into string array
-expiryDates = vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:})
+expiryDates = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}))
 
 %% Print the Date/Save to File
 
