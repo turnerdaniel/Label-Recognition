@@ -22,20 +22,23 @@ clear; close all; clc;
 warning('off', 'images:initSize:adjustingMag'); 
 
 %TODO:
-%Further false-positive reductions
-%Variable Renaming
-%Parameter Tweaking
 %Optimisation (if/loops/memory)
 %problems with uneven illumination in enhanced MSER. Try tophat?
 %Image Testing!!!
 
-%% Read image
+%Changes: closing in CCMSER?
+%Need to test precision/recall & increase threshold? (0.6 = 60%)
+%remove space from regex (dd mm yyyy)
+%Could repair 1020... images or Change to 2/3 width:
+    %expandedX = roiX - (roiW * (2/3)); expandedW = roiW + ((roiW * (2/3)) * 2);
+%Need to test accuracy of detection
+%Need to get overall accuracy
+%See if we can maximise precision a bit (SWT, expansion, etc...)
+%MORE...
 
-% load('verification/groundTruth.mat');
-% val = 2;
-% Don't have local pathnames...
-% gTruth.DataSource.Source{val};
-% [precision, recall] = bboxPrecisionRecall(expandedFilteredTextROI, gTruth.LabelData{val, 1}{1})
+%put code into functions
+
+%% Read image
 
 %imgs = ('img/20 NOV(1184)(2325).jpeg');
 %       ('img/25 MAR(2354).jpeg');
@@ -43,11 +46,8 @@ warning('off', 'images:initSize:adjustingMag');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 844 960 988.jpeg');
 
-%Changes: closing in CCMSER & remove space from regex dd mm yyyy
-%Could repair 1020... images
-
-imageFile = 'image3.jpeg';
-I = imread(fullfile('samples', imageFile));
+%imageFile = 'image3.jpeg';
+%I = imread(fullfile('samples', imageFile));
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -267,7 +267,7 @@ for i = 1:totalObjects
     %Get the image conting just the object
     object = swtStats(i).Image;
        
-    %Pad the image with 0's to avoid boundary effects
+    %Pad the image with 0's to avoid stroke width being affected by boundary
     paddedObject = padarray(object, [1 1]);
         
     %Distance Transform
