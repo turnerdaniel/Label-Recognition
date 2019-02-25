@@ -25,7 +25,7 @@ warning('off', 'images:initSize:adjustingMag');
 
 %Warning: you will need to change the local filepaths for the dataset in the 
 %ground truth object using changeFilePaths() 
-load('gTruths.mat');
+load('dateGroundTruths.mat');
 
 %Get size of dataset
 imageCount = size(gTruth.LabelData, 1);
@@ -35,7 +35,6 @@ precision = zeros(imageCount, 1);
 recall = zeros(imageCount, 1);
 
 %% Run Script 
-tic
 for val = 1:imageCount
     %% Read image 
     I = imread(gTruth.DataSource.Source{val});
@@ -411,9 +410,9 @@ for val = 1:imageCount
     
     %% Calculate Precision and Recall
     
-    gTruthImage = insertShape(I, 'Rectangle', gTruth.LabelData{val, 1}{1}, 'LineWidth', 2, 'Color', 'green');
-    figure, subplot(1,2,1), imshow(expandedFilteredTextROIImage);
-    subplot(1,2,2), imshow(gTruthImage);
+    %gTruthImage = insertShape(I, 'Rectangle', gTruth.LabelData{val, 1}{1}, 'LineWidth', 2, 'Color', 'green');
+    %figure, subplot(1,2,1), imshow(expandedFilteredTextROIImage);
+    %subplot(1,2,2), imshow(gTruthImage);
     
     %Show progress
     disp(val);
@@ -422,4 +421,3 @@ for val = 1:imageCount
     [precision(val), recall(val)] = bboxPrecisionRecall(expandedFilteredTextROI, gTruth.LabelData{val, 1}{1});
 
 end
-runTime = toc
