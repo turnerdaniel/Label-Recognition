@@ -28,12 +28,10 @@ warning('off', 'images:initSize:adjustingMag');
 
 %Changes: closing in CCMSER?
 %Need to test precision/recall & increase threshold? (0.6 = 60%)
-%Could repair 1020... images or Change to 2/3 width:
-    %expandedX = roiX - (roiW * (2/3)); expandedW = roiW + ((roiW * (2/3)) * 2);
 %Need to test accuracy of detection
 %Need to get overall accuracy
 %See if we can maximise precision a bit (SWT, expansion, etc...)
-%Rename sample images & revert changes?
+%Rename sample images
 %MORE...
 
 %put code into functions
@@ -46,8 +44,8 @@ warning('off', 'images:initSize:adjustingMag');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 844 960 988.jpeg');
 
-%imageFile = 'image3.jpeg';
-%I = imread(fullfile('samples', imageFile));
+imageFile = '988.jpeg';
+I = imread(fullfile('samples', imageFile));
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -311,8 +309,10 @@ roiH = textROI(:, 4);
 
 %Expand ROI by half the character width in horizontal direction since dates
 %are typically vertically aligned
-expandedX = roiX - (roiW/2);
-expandedW = 2 * roiW;
+%expandedX = roiX - (roiW/2);
+%expandedW = 2 * roiW;
+expandedX = roiX - (roiW * (2/3)); 
+expandedW = roiW + ((roiW * (2/3)) * 2);
 
 %Ensure that ROI is within bounds of the image
 expandedX = max(expandedX, 1);
