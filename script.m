@@ -28,7 +28,6 @@ warning('off', 'images:initSize:adjustingMag');
 
 %Changes: closing in CCMSER?
 %Need to test precision/recall & increase threshold? (0.6 = 60%)
-%remove space from regex (dd mm yyyy)
 %Could repair 1020... images or Change to 2/3 width:
     %expandedX = roiX - (roiW * (2/3)); expandedW = roiW + ((roiW * (2/3)) * 2);
 %Need to test accuracy of detection
@@ -513,21 +512,20 @@ detectedText
 %3. DD/MM/YY / DD/MM/YYYY / MM/DD/YY / MM/DD/YYYY / YY/MM/DD
 %4. DD.MM.YY / DD.MM.YYYY / MM.DD.YY / MM.DD.YYYY / YY.MM.DD
 %5. DD-MM-YY / DD-MM-YYYY / MM-DD-YY / MM-DD-YYYY / YY-MM-DD
-%6. DD MM YY / DD MM YYYY / MM DD YY / MM DD YYYY / YY MM DD
-%7. DD/MMM/YY / DD/MMM/YYYY / DD.MMM.YY / DD.MMM.YYYY / DD-MMM-YY / DD-MMM-YYYY
+%6. DD/MMM/YY / DD/MMM/YYYY / DD.MMM.YY / DD.MMM.YYYY / DD-MMM-YY / DD-MMM-YYYY
 
 %Formats not Supported:
 %YYYY/MM/DD / YYYY.MM.DD / YYYY-MM-DD = Difficult to differentiate
 %between the more popular DD-MM-YYYY format resulting in false positives.
-%DDMMYY / DDMMYYYY = Can't differentiate from set of numbers found on 
-%barcode or the rest of the packaging.
+%DDMMYY / DDMMYYYY / DD MM YY/ DD MM YYYY = Can't differentiate from set 
+%of numbers found on barcode or the rest of the packaging.
 
-%Handles formats 1 and 7 
+%Handles formats 1 and 6 
 regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)((?:\d{2}){0,2})';
 %Handles formats 2
 regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)(?:\d{2}){1,2}';
-%Handles format 3, 4, 5 and 6
-regexNumeric = '(\d{1,2})([\/\\\-\. ])(\d{1,2})(\2)((?:\d{2}){1,2})';
+%Handles format 3, 4 and 5
+regexNumeric = '(\d{1,2})([\/\\\-\.])(\d{1,2})(\2)((?:\d{2}){1,2})';
 
 %Remove newline characters from the end of the text
 detectedText = strip(detectedText, newline);
