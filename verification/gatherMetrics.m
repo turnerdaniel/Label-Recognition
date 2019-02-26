@@ -3,7 +3,7 @@
 %Precision = 
 %Recall = 
 %Recognition Accuracy =
-%Overall Accuracy =
+%Overall Accuracy = 
 
 %Author: Daniel Turner
 %University: University of Lincoln
@@ -14,7 +14,7 @@ clear; close all; clc;
 
 %% Read Ground Truths
 %Warning: you will need to change the local filepaths for the objects below
-%to the correct direcroty on your system. Use: changeFilePaths() 
+%to the correct directory on your system. Use: changeFilePaths() 
 
 %Loads a table holding the Ground Truth Bounding Boxes for images in dataset
 load('dateGroundTruths.mat');
@@ -22,7 +22,7 @@ load('dateGroundTruths.mat');
 load('dateLabels.mat');
 
 %Get size of dataset
-imageCount = 25;% size(gTruth.LabelData, 1);
+imageCount = 250; %size(gTruth.LabelData, 1);
 
 %Initialise metric vectors
 precision = zeros(imageCount, 1);
@@ -30,12 +30,12 @@ recall = zeros(imageCount, 1);
 expiryDates = cell(imageCount, 1);
 dateKnown = dateLabels.Dates;
 
-%% Execute Algorithm in Parallel
+%% Execute Algorithm
 %Parallel for loop used to decrease computation time for large dataset.
 %Parallel Computing Toolbox is required. Alternatives: for
 
 %Will create parallel pool if one is not already created
-parfor iteration = 1:imageCount
+for iteration = 1:imageCount
     %% Read Image
     
     %Load image from filepath resent in ground truth object
@@ -352,7 +352,8 @@ parfor iteration = 1:imageCount
         filteredTextROI(:, 3), expandedH];
     
     %calculate precision and recall
-    [precision(iteration), recall(iteration)] = bboxPrecisionRecall(expandedFilteredTextROI, gTruth.LabelData{iteration, 1}{1});
+    [precision(iteration), recall(iteration)] = bboxPrecisionRecall(expandedFilteredTextROI, ...
+        gTruth.LabelData{iteration, 1}{1});
     
     %% Perform Optical Character Recognition (OCR)
     
@@ -444,15 +445,15 @@ parfor iteration = 1:imageCount
     
     %Concatenate matching text into string array
     expiryDates{iteration} = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
-    
 end
+%End of algorithm loop
 
 %% Calculate Detection Accuracy using Precision & Recall
 
 avgPrecision = mean(precision);
 avgRecall = mean(recall);
 
-fprintf("Expiry Date Detection:\nPrecision: %.4f  Recall: %.4f\n", ...
+fprintf("Expiry Date Detection:\nPrecision: %.4f  Recall: %.4f\n\n", ...
     avgPrecision, avgRecall);
 
 %% Calculate Recognition Accuracy
@@ -471,12 +472,12 @@ matches = false(detectedTotal, 1);
 for i = 1:detectedTotal    
     if (size(detectedDates{i}, 1) == 1)
         matches(i) = strcmpi(strrep(detectedDates{i}, ' ', ''), ...
-            strrep(knownDates{i}, ' ', ''));
+            strrep(detectedKnown{i}, ' ', ''));
     else
         multiMatches = zeros(1);
         for j = 1:size(detectedDates{i}, 1)
             multiMatches(j) = strcmpi(strrep(detectedDates{i}(j), ' ', ''), ...
-                strrep(knownDates{i}, ' ', ''));
+                strrep(detectedKnown{i}, ' ', ''));
         end
         matches(i) = max(multiMatches);
     end
@@ -484,8 +485,8 @@ end
 
 recogAccuracy = sum(matches) / detectedTotal;
 
-fprintf("Text Recognition Accuracy from %.0f images = %.4f \n", detectedTotal, ...
-    recogAccuracy);
+fprintf("Expiry Date Recognition:\nAccuracy from %.0f images: %.4f\n\n", ...
+    detectedTotal, recogAccuracy);
 
 %% Calculate Overall Accuracy
 
@@ -508,7 +509,8 @@ end
 
 accuracy = sum(matches) / imageCount;
 
-fprintf("Overall Accuracy using %.0f images: %.4f \n", imageCount, accuracy);
+fprintf("Overall Detection & Recognition:\nAccuracy from %.0f images: %.4f\n\n", ...
+    imageCount, accuracy);
 
 
 

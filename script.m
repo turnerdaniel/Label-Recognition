@@ -31,10 +31,9 @@ warning('off', 'images:initSize:adjustingMag');
 %Need to test accuracy of detection
 %Need to get overall accuracy
 %See if we can maximise precision a bit (SWT, expansion, etc...)
-%Rename sample images (5 goood/5 bad)
+%Rename sample images (5 good/5 bad)
 
-%Test and optimise the gatherMetrics.m
-%ensure all outputs are up-to-date with the script
+%Test and optimise gatherMetrics.m!!
 %Finish gatherMetrics script & remove else
 %Change script everywhere - 2/3 width, 0.7 bbox T, closing, etc.
 
