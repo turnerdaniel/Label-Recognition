@@ -22,8 +22,8 @@ clear; close all; clc;
 warning('off', 'images:initSize:adjustingMag'); 
 
 %TODO:
-%Optimisation (if/loops/memory)
-%problems with uneven illumination in enhanced MSER. Try tophat?
+%Optimisation (if/loops/memory) - Can use 'PreprocessBinaryImage' 0 in OCR to speed up
+%Problems with uneven illumination in enhanced MSER. Try tophat?
 %Image Testing!!!
 
 %Changes: closing in CCMSER?
@@ -31,10 +31,13 @@ warning('off', 'images:initSize:adjustingMag');
 %Need to test accuracy of detection
 %Need to get overall accuracy
 %See if we can maximise precision a bit (SWT, expansion, etc...)
-%Rename sample images
-%MORE...
+%Rename sample images (5 goood/5 bad)
 
-%put code into functions
+%Test and optimise the gatherMetrics.m
+%ensure all outputs are up-to-date with the script
+%Finish gatherMetrics script & remove else
+%Change script everywhere - 2/3 width, 0.7 bbox T, closing, etc.
+
 
 %% Read image
 
@@ -44,8 +47,8 @@ warning('off', 'images:initSize:adjustingMag');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 844 960 988.jpeg');
 
-imageFile = '988.jpeg';
-I = imread(fullfile('samples', imageFile));
+imageFile = 'image495.jpeg';
+I = imread(fullfile('dataset', imageFile));
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
