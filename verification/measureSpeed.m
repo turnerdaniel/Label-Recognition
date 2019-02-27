@@ -1,20 +1,16 @@
 %% MATLAB Script for Testing the Expiry Date Recognition Algorithm
-%All function used to display images are removed since they are irrelevant
-%when the algorithm is embedded in a system.
-
 %Will produce 4 values:
-%Precision = Measure of how relevant the results were
-%Recall = Measure of how many relevant were returned
-%Recognition Accuracy = How many dates were correct out of the correctly
-%identified bounding boxes
-%Overall Accuracy = How many dates were correct out of the entire dataset
+%Average Time = The mean time for the algorithm to be completed
+%Minimum Time = The fastest time the algorithm was completed
+%Maximum Time = The slowet time the algorithm was completed
+%Standard Deviation = The amount of varition in time complexity
 
 %Author: Daniel Turner
 %University: University of Lincoln
-%Date: 25/2/2019
+%Date: 26/2/2019
 
 %Reset MATLAB environement
-clear; close all; clc;
+clear; close all; %clc;
 
 %% Read Ground Truths
 %########################################################################
@@ -25,17 +21,12 @@ clear; close all; clc;
 %Loads a table holding the Ground Truth Bounding Boxes for images in dataset
 %Need to change directories to a valid path to dataset
 load('dateGroundTruths.mat');
-%Loads a table holding the Expiry Date values for images in the dataset
-load('dateLabels.mat');
 
 %Get size of dataset
 imageCount = size(gTruth.LabelData, 1);
 
 %Initialise metric vectors
-precision = zeros(imageCount, 1);
-recall = zeros(imageCount, 1);
-expiryDates = cell(imageCount, 1);
-dateKnown = dateLabels.Dates;
+times = zeros(imageCount, 1);
 
 %% Execute Algorithm
 %For loop is parallelised to decrease computation time for large dataset.
@@ -43,6 +34,8 @@ dateKnown = dateLabels.Dates;
 
 %Iterate through the size of the dataset
 parfor iteration = 1:imageCount
+    tic
+    
     %% Read Image
     %Load image from filepath resent in ground truth object
     I = imread(gTruth.DataSource.Source{iteration});
@@ -449,102 +442,22 @@ parfor iteration = 1:imageCount
     validNumeric = regexpi(detectedText, regexNumeric, 'match');
        
     %Concatenate matching text into string array
-    expiryDates{iteration} = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
+    expiryDates = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
     
-    %% Calculate Precision and Recall
-    
-    %Compare the identified bounding boxes with the ground truth using a
-    %threshold of 0.5
-    [precision(iteration), recall(iteration)] = bboxPrecisionRecall(expandedFilteredTextROI, ...
-        gTruth.LabelData{iteration, 1}{1});
-    
+    times(iteration) = toc;
 end
-%End of parallel loop
+%End of parallel  loop
 
-%% Calculate Detection Accuracy
+%% Calculate algorithm execution time
 
-%Calculate the mean precision and recall values across the dataset
-avgPrecision = mean(precision);
-avgRecall = mean(recall);
+%Calculate the mean, min, max and standared deviation from the execution
+%times
+avgTime = mean(times);
+minTime = min(times);
+maxTime = max(times);
+stdTime = std(times);
 
 %Output results to command window
-fprintf("Expiry Date Detection:\nPrecision: %.4f  Recall: %.4f\n\n", ...
-    avgPrecision, avgRecall);
+fprintf("Expiry Date Algorithm Time Effeciency:\nMinimum: %.4f  Maximum: %.4f\nAverage: %.4f\nStandard Deviation: %.4f\n\n", ...
+    minTime, maxTime, avgTime, stdTime);
 
-%% Calculate Recognition Accuracy
-
-%Store dates in new variable for easier access
-dates = expiryDates;
-knownDates = dateLabels.Dates;
-
-%Remove dates that were not detected
-filter = (recall > 0);
-detectedKnown = knownDates(filter);
-detectedDates = dates(filter);
-
-%Find new size of dataset after removing undetected dates
-detectedTotal = size(detectedKnown, 1);
-
-%Initialise variable to store whether dates match
-matches = false(detectedTotal, 1);
-
-%Loop through images with detected dates
-for i = 1:detectedTotal
-    %If there was only 1 date detected
-    if (size(detectedDates{i}, 1) == 1)
-        %Compare detected date and true dates (remove all spaces)
-        matches(i) = strcmpi(strrep(detectedDates{i}, ' ', ''), ...
-            strrep(detectedKnown{i}, ' ', ''));
-    else
-        %Initialise variable to store whether any of the detected dates match
-        multiMatches = zeros(1);
-        %Loop through all detected dates in image
-        for j = 1:size(detectedDates{i}, 1)
-            %Compare detected date and true dates (remove all spaces)
-            multiMatches(j) = strcmpi(strrep(detectedDates{i}(j), ' ', ''), ...
-                strrep(detectedKnown{i}, ' ', ''));
-        end
-        %Return true if any of the dates matches
-        matches(i) = max(multiMatches);
-    end
-end
-
-%Find accuracy bycalculating ratio between matches and total detected dates
-recogAccuracy = sum(matches) / detectedTotal;
-
-%Output results to command window
-fprintf("Expiry Date Recognition:\nAccuracy from %.0f images: %.4f\n\n", ...
-    detectedTotal, recogAccuracy);
-
-%% Calculate Overall Accuracy
-
-%Re-initialise variable to store whether dates match
-matches = false(imageCount, 1);
-
-%Loop through all images
-for i = 1:imageCount
-    %If there was only 1 date detected
-    if (size(dates{i}, 1) == 1)
-        %Compare detected date and true dates (remove all spaces)
-        matches(i) = strcmpi(strrep(dates{i}, ' ', ''), ...
-            strrep(knownDates{i}, ' ', ''));
-    else
-        %Initialise variable to store whether any of the detected dates match
-        multiMatches = zeros(1);
-        %Loop through all detected dates in image
-        for j = 1:size(dates{i}, 1)
-            %Compare detected date and true dates (remove all spaces)
-            multiMatches(j) = strcmpi(strrep(dates{i}(j), ' ', ''), ...
-                strrep(knownDates{i}, ' ', ''));
-        end
-        %Return true if any of the dates matches
-        matches(i) = max(multiMatches);
-    end
-end
-
-%Find accuracy bycalculating ratio between matches and total number of images
-accuracy = sum(matches) / imageCount;
-
-%Output to command window
-fprintf("Overall Detection & Recognition:\nAccuracy from %.0f images: %.4f\n\n", ...
-    imageCount, accuracy);

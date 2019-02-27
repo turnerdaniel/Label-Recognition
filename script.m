@@ -3,6 +3,7 @@
 %University: University of Lincoln
 %Date: 23/1/2019
 
+%References:
 %Stroke Width Transform Algorithm:
 %Li, Y. and Lu, H. (2012) Scene Text Detection via Stroke Width. In:
 %21st International Conference on Pattern Recognition (ICPR 2012),
@@ -15,28 +16,21 @@
 %automatically-detect-and-recognize-text-in-natural-images.html#d120e277 
 %[accessed 10 February 2019].
 
-%Reset MATLAB environement
+%% Setup Script Environment
+
+%Reset MATLAB environment
 clear; close all; clc;
 
 %Disable non-criticial warnings for image resizing
 warning('off', 'images:initSize:adjustingMag'); 
 
 %TODO:
-%Optimisation (if/loops/memory) - Can use 'PreprocessBinaryImage' 0 in OCR to speed up
+%Optimisation (if/loops/memory)
 %Problems with uneven illumination in enhanced MSER. Try tophat?
-%Image Testing!!!
-
-%Changes: closing in CCMSER?
-%Need to test precision/recall & increase threshold? (0.6 = 60%)
-%Need to test accuracy of detection
-%Need to get overall accuracy
-%See if we can maximise precision a bit (SWT, expansion, etc...)
+%Change loop that uses k to i
 %Rename sample images (5 good/5 bad)
-
-%Test and optimise gatherMetrics.m!!
-%Finish gatherMetrics script & remove else
-%Change script everywhere - 2/3 width, 0.7 bbox T, closing, etc.
-%verify files are the same (compare just image___)
+%Can use 'PreprocessBinaryImage' 0 in OCR to speed up?
+    %Update all scripts if necessary
 
 
 %% Read image
@@ -47,8 +41,8 @@ warning('off', 'images:initSize:adjustingMag');
 %       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
 %       ('img/370 378 844 960 988.jpeg');
 
-imageFile = 'image495.jpeg';
-I = imread(fullfile('dataset', imageFile));
+imageFile = '378.jpeg';
+I = imread(fullfile('samples', imageFile));
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -74,12 +68,6 @@ greyContrastStretch = imadjust(greyWeiner);
 %Use unsharp masking to increase image sharpness
 greySharp = imsharpen(greyContrastStretch);
 
-%Display pre-processing effects
-%figure, subplot(2,2,1), imshow(grey), title('Greyscale Image');
-%subplot(2,2,2), imshow(greyWeiner), title('Linear Weiner Filter');
-%subplot(2,2,3), imshow(greyContrastStretch), title('Contrast Stretching');
-%subplot(2,2,4), imshow(greySharp), title('Unsharp Masking');
-
 %% Maximally Stable Extremal Regions (MSER)
 
 %Detect MSER Regions
@@ -92,13 +80,6 @@ mserRegions = detectMSERFeatures(greySharp, 'RegionAreaRange', ...
 %Concatenate pixel coordinates as Nx2 matrix
 mserPixels = vertcat(cell2mat(mserRegions.PixelList));
 
-%Display MSER Regions overlay on image
-%figure, imshow(I);
-%hold on;
-%plot(mserRegions, 'showPixelList', true, 'showEllipses', false);
-%title('MSER Regions');
-%hold off;
-
 %Initialise logical image with necessary dimensions
 mserBW = false(imageHeight, imageWidth);
 %Convert img co-ordinates to linear image indexes
@@ -109,8 +90,8 @@ mserBW(ind) = true;
 
 %% Image Post-Processing - Opening, 
 
+%Define 3x3 square structuring element
 seSquare = strel('square', 3);
-%seDiamond = strel('diamond', 1);
 
 %Opening to remove small joins
 opened = imopen(mserBW, seSquare);
@@ -118,7 +99,7 @@ opened = imopen(mserBW, seSquare);
 %figure, subplot(1,2,1), imshow(mserBW), title('Original');
 %subplot(1,2,2), imshow(opened), title('Opened');
 
-%Remove small blobs
+%Remove small blobs below 100 pixels
 clearNoise = bwareaopen(opened, 100); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
@@ -132,7 +113,6 @@ mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
 totalObjects = size(mserStats, 1);
 CCadjustedImage = false(imageHeight, imageWidth);
 
-tic
 for i = 1:totalObjects
     %Get BBox and image
     %Correct for slightly large BBox and round floating values
@@ -184,18 +164,14 @@ for i = 1:totalObjects
     CCadjustedImage(imageBBox(2):imageBBox(2) + imageBBox(4), ...
         imageBBox(1):imageBBox(1) + imageBBox(3)) = keepImage;    
 end
-loopTime = toc
 
 %figure, imshow(CCadjustedImage), title('CC Adjustment');
-
-%Close small gaps ################################
-%CCadjustedImage = imclose(CCadjustedImage, seSquare);
 
 %Remove small blobs
 clearNoise = bwareaopen(CCadjustedImage, 20); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
-%figure, imshow(clearSmallHoles), title('No holes & Small Blobs V2');
+%figure, imshow(clearSmallHoles), title('Remove Holes & Small Blobs Again');
 
 %% Remove Unlikely Candidates using Region Properties
 
@@ -228,24 +204,11 @@ validSolidity = [mserStats.Solidity] > 0.4;
 %roughly square = 1
 validAspectRatio = aspectRatio < 3;
 
-% figure, subplot(3,2,1), plot([mserStats.EulerNumber]), title('Euler');
-% subplot(3,2,2), plot([mserStats.Eccentricity]), title('Eccentricity');
-% subplot(3,2,3), plot([mserStats.Extent]), title('Extent');
-% subplot(3,2,4), plot([mserStats.Solidity]), title('Solidity');
-% subplot(3,2,5), plot(aspectRatio), title('Aspect');
-
 %Find the index of all objects that have valid properties
 keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
     validSolidity & validAspectRatio);
 %Return pixels that satisfy the similar property criteria for the image
 keptObjectsImage = ismember(mserLabel, keptObjects);
-
-% figure, imshow(clearSmallHoles), title('original');
-% figure, imshow(ismember(mserLabel, find(validEulerNo))), title('Valid Euler No');
-% figure, imshow(ismember(mserLabel, find(validEccentricity))), title('Valid Eccentricity');
-% figure, imshow(ismember(mserLabel, find(validExtent))), title('Valid Extent');
-% figure, imshow(ismember(mserLabel, find(validSolidity))), title('Valid Solidity');
-% figure, imshow(ismember(mserLabel, find(validAspectRatio))), title('Valid Aspect');
 
 %figure, imshow(keptObjectsImage), title('Filter images using text properties')
 
@@ -260,10 +223,8 @@ totalObjects = size(swtStats, 1);
 swtVariation = zeros(1, totalObjects);
 
 %Define the maximum variation in stroke width for letters
-%Lowest = 0.375
 swtVariationThresh = 0.4;
 
-tic
 for i = 1:totalObjects
     %Get the image conting just the object
     object = swtStats(i).Image;
@@ -283,7 +244,6 @@ for i = 1:totalObjects
     %Calculate the variation in stroke widths
     swtVariation(i) = std(swtWidths)/mean(swtWidths);
 end
-loopTime = toc
 
 %Find stroke widths that are below the variation threshold
 validStrokeWidths = swtVariation < swtVariationThresh;
@@ -335,7 +295,6 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %that intersect
 labelledROI = conncomp(graph(overlapRatio));
 
-tic
 %Ensure that there is similarity between connected letters
 maxComponents = max(labelledROI);
 %loop through connected bounding boxes
@@ -367,7 +326,6 @@ for k = 1:maxComponents
         end
     end
 end
-loopTime = toc
 
 %Find the minimum values of X & Y and the maximum values of W & H for each 
 %of the intersecting bounding boxes to form encompassing bounding boxes
@@ -422,7 +380,7 @@ expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
     filteredTextROI(:, 3), expandedH];
 
 expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
-figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
+%figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
 
 %% Perform Optical Character Recognition (OCR)
 
@@ -435,7 +393,6 @@ ROISize = size(ocrROI, 1);
 detectedText = strings(ROISize, 1);
 samplePoints = 10;
 
-tic
 %Loop through candidate words
 for i = 1:ROISize
     %Crop binary image using expanded bounding boxes
@@ -502,7 +459,6 @@ for i = 1:ROISize
     %Store the detected text
     detectedText(i) = ocrOutput.Text;
 end
-loopTime = toc
 
 %% Perform Text Matching using Regex
 
