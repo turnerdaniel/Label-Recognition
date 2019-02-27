@@ -22,7 +22,7 @@ load('dateGroundTruths.mat');
 load('dateLabels.mat');
 
 %Get size of dataset
-imageCount = 250; %size(gTruth.LabelData, 1);
+imageCount = size(gTruth.LabelData, 1);
 
 %Initialise metric vectors
 precision = zeros(imageCount, 1);
@@ -35,7 +35,7 @@ dateKnown = dateLabels.Dates;
 %Parallel Computing Toolbox is required. Alternatives: for
 
 %Will create parallel pool if one is not already created
-for iteration = 1:imageCount
+parfor iteration = 1:imageCount
     %% Read Image
     
     %Load image from filepath resent in ground truth object
@@ -447,6 +447,12 @@ for iteration = 1:imageCount
     expiryDates{iteration} = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
 end
 %End of algorithm loop
+
+%% Verify files match
+
+%Ensure that we are matching the same files
+
+
 
 %% Calculate Detection Accuracy using Precision & Recall
 

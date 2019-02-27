@@ -36,6 +36,7 @@ warning('off', 'images:initSize:adjustingMag');
 %Test and optimise gatherMetrics.m!!
 %Finish gatherMetrics script & remove else
 %Change script everywhere - 2/3 width, 0.7 bbox T, closing, etc.
+%verify files are the same (compare just image___)
 
 
 %% Read image
@@ -309,10 +310,8 @@ roiY = textROI(:, 2);
 roiW = textROI(:, 3);
 roiH = textROI(:, 4);
 
-%Expand ROI by half the character width in horizontal direction since dates
+%Expand ROI by 2/3 the character width in horizontal direction since dates
 %are typically vertically aligned
-%expandedX = roiX - (roiW/2);
-%expandedW = 2 * roiW;
 expandedX = roiX - (roiW * (2/3)); 
 expandedW = roiW + ((roiW * (2/3)) * 2);
 
@@ -505,7 +504,6 @@ for i = 1:ROISize
 end
 loopTime = toc
 
-detectedText
 %% Perform Text Matching using Regex
 
 %Formats covered by Regex:
@@ -539,7 +537,7 @@ validTextYear = regexpi(detectedText, regexTextYear, 'match');
 validNumeric = regexpi(detectedText, regexNumeric, 'match');
 
 %concatenate matching text into string array
-expiryDates = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}))
+expiryDates = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
 
 %% Print the Date/Save to File
 
