@@ -27,23 +27,34 @@ warning('off', 'images:initSize:adjustingMag');
 %TODO:
 %Optimisation (if/loops/memory)
 %Problems with uneven illumination in enhanced MSER. Try tophat?
-%Change loop that uses k to i
 %Rename sample images (5 good/5 bad)
 %Can use 'PreprocessBinaryImage' 0 in OCR to speed up?
     %Update all scripts if necessary
 %Could merge timer into metrics function
-%Change to UI image picker
 
 %% Read image
 
-%imgs = ('img/20 NOV(1184)(2325).jpeg');
-%       ('img/25 MAR(2354).jpeg');
-%       ('img/10 MAR(1820).jpeg');
-%       ('img/image1 2 3 4 5 6 7 8 9 10.jpeg');
-%       ('img/370 378 844 960 988.jpeg');
+%Open UI menu to choose image from file
+[inFile, inPath] = uigetfile('samples/*.jpeg', 'Select An Image');
 
-imageFile = '378.jpeg';
-I = imread(fullfile('samples', imageFile));
+%Check that an image has been selected
+if (~isequal(inFile, 0))
+    try
+        %Read the image
+        I = imread(fullfile(inPath, inFile));
+    catch 
+        %Alert user that the image could not be read (wrong filetype)
+        fprintf("Unable to read image: %s\n\n", inFile);
+        %Exit script
+        return
+    end
+else
+    %Alert user that they didn't select a file so the program can't be
+    %executed
+    fprintf("No image was selected. Exiting...\n\n");
+    %Exit script
+    return
+end
 
 %% Convert to greyscale
 %Check if image is RGB denoted by being 3D array
@@ -518,13 +529,18 @@ buttonPress = questdlg(message, caption, 'Okay', 'Save...', 'Okay');
 %Check if save button is pressed
 if strcmpi(buttonPress, 'Save...')
         %Present user with 'Save As' dialog box
-        [file, path] = uiputfile([extractBefore(imageFile, '.'), '-detections.txt']);
+        [outFile, outPath] = uiputfile([extractBefore(inFile, '.'), '-detections.txt']);
         %Check that the a destination has been selected
-        if (~isequal(file, 0))
+        if (~isequal(outFile, 0))
+            %Open the file with overwrite permissions
+            fileID = fopen(fullfile(outPath, outFile), 'w');
             %Write detected text/dates to file
-            fileID = fopen(fullfile(path, file), 'w');
             fprintf(fileID, '%s\n', data);
+            %Close the file
             fclose(fileID);
+        else
+            %Alert the user that the file wasn't saved. 
+            fprintf("No destination selected. File was not saved.\n\n");
         end
 end
 
