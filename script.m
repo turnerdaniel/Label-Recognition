@@ -25,12 +25,9 @@ clear; close all; clc;
 warning('off', 'images:initSize:adjustingMag'); 
 
 %TODO:
-%Optimisation (if/loops/memory)
-%Problems with uneven illumination in enhanced MSER. Try tophat?
-%Rename sample images (5 good/5 bad)
-%Can use 'PreprocessBinaryImage' 0 in OCR to speed up?
-    %Update all scripts if necessary
-%Could merge timer into metrics function
+%Optimisation
+%Final Checks - the same on both scripts? Should be!
+%Test on faster computer!
 
 %% Read image
 
@@ -80,6 +77,8 @@ greyContrastStretch = imadjust(greyWeiner);
 %Use unsharp masking to increase image sharpness
 greySharp = imsharpen(greyContrastStretch);
 
+figure, imshow(greySharp), title('Pre-processed Image');
+
 %% Maximally Stable Extremal Regions (MSER)
 
 %Detect MSER Regions
@@ -98,7 +97,7 @@ mserBW = false(imageHeight, imageWidth);
 ind = sub2ind(size(mserBW), mserPixels(:,2), mserPixels(:,1));
 %assign true to co-ordinates that match
 mserBW(ind) = true;
-%figure, imshow(mserBW), title('logical MSER Image');
+figure, imshow(mserBW), title('logical MSER Image');
 
 %% Image Post-Processing - Opening, 
 
@@ -108,14 +107,11 @@ seSquare = strel('square', 3);
 %Opening to remove small joins
 opened = imopen(mserBW, seSquare);
 
-%figure, subplot(1,2,1), imshow(mserBW), title('Original');
-%subplot(1,2,2), imshow(opened), title('Opened');
-
 %Remove small blobs below 100 pixels
 clearNoise = bwareaopen(opened, 100); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
-%figure, imshow(clearSmallHoles), title('No holes & Small Blobs');
+figure, imshow(clearSmallHoles), title('Post-Processed Image');
 
 %% Connected Component Enhanced MSER (CCEMSER)
 
@@ -177,13 +173,12 @@ for i = 1:totalObjects
         imageBBox(1):imageBBox(1) + imageBBox(3)) = keepImage;    
 end
 
-%figure, imshow(CCadjustedImage), title('CC Adjustment');
-
 %Remove small blobs
 clearNoise = bwareaopen(CCadjustedImage, 20); 
 %Close small holes by inverting image between foreground and background
 clearSmallHoles = ~bwareaopen(~clearNoise, 3);
-%figure, imshow(clearSmallHoles), title('Remove Holes & Small Blobs Again');
+
+figure, imshow(clearSmallHoles), title('Connected-Componenent Enhanced Image');
 
 %% Remove Unlikely Candidates using Region Properties
 
@@ -222,7 +217,7 @@ keptObjects = find(validEulerNo & validEccentricity & validExtent & ...
 %Return pixels that satisfy the similar property criteria for the image
 keptObjectsImage = ismember(mserLabel, keptObjects);
 
-%figure, imshow(keptObjectsImage), title('Filter images using text properties')
+figure, imshow(keptObjectsImage), title('Filtered Image using Text Properties')
 
 %% Stroke Width Transform
 
@@ -264,8 +259,8 @@ keptSWT = find(validStrokeWidths);
 %Create an image made of objects that are below the variation threshold
 keptSWTImage = ismember(swtLabel, keptSWT);
 
-%figure, imshow(keptSWTImage), title('Filter images using SWT');
-%figure, plot(swtVariation), yline(swtVariationThresh); title('SW Variation in Image');
+figure, imshow(keptSWTImage), title('Filtered Image using Stroke Width Transform');
+%figure, plot(swtVariation), yline(swtVariationThresh); title('Stroke Width Variation in Image');
 
 %% Rule-Based Candidate Text Grouping
 
@@ -274,7 +269,7 @@ textStats = regionprops(keptSWTImage, 'BoundingBox');
 textROI = vertcat(textStats.BoundingBox);
 %Insert the bounding boxes onto the image and display
 textROIImage = insertShape(I, 'Rectangle', textROI, 'LineWidth', 2);
-%figure, imshow(textROIImage), title('Text ROI''s');
+figure, imshow(textROIImage), title('Text ROI''s');
 
 %Get bounding box sizes
 roiX = textROI(:, 1);
@@ -294,7 +289,7 @@ expandedW = min(expandedW, imageWidth - expandedX);
 %Create expanded bounding boxes
 expandedTextROI = [expandedX, roiY, expandedW, roiH];
 expandedTextROIImage = insertShape(I, 'Rectangle', expandedTextROI, 'LineWidth', 2);
-%figure, imshow(expandedTextROIImage), title('Expanded Text ROI');
+figure, imshow(expandedTextROIImage), title('Expanded Text ROI');
 
 %Calculate the ratio of union between bounding boxes
 overlapRatio = bboxOverlapRatio(expandedTextROI, expandedTextROI, 'Union');
@@ -350,7 +345,7 @@ y2 = accumarray(labelledROI, roiY + roiH, [], @max);
 %Create merged bounding boxes in [X Y H W] format
 mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
 mergedTextROIImage = insertShape(I, 'Rectangle', mergedTextROI, 'LineWidth', 2);
-%figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
+figure, imshow(mergedTextROIImage), title('Merged Text ROI of Similar Size');
 
 %Calculate size of labels after updating connected bounding boxes
 labelSizes = hist(labelledROI', 1:max(labelledROI));
@@ -377,7 +372,7 @@ for i = 1:size(removePixelsROI, 1)
 end
 
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
-%figure, imshow(filteredTextROIImage), title('Remove Singular ROI');
+figure, imshow(filteredTextROIImage), title('Remove Singular ROI''s');
 
 %Expand a the bounding box vertically to fully contain the text's height 
 pixelExpansion = 2;
@@ -392,7 +387,7 @@ expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
     filteredTextROI(:, 3), expandedH];
 
 expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
-figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
+figure, imshow(expandedFilteredTextROIImage), title('Expanded Merged ROI''s');
 
 %% Perform Optical Character Recognition (OCR)
 

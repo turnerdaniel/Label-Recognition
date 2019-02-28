@@ -277,7 +277,7 @@ parfor iteration = 1:imageCount
     
     %Create expanded bounding boxes
     expandedTextROI = [expandedX, roiY, expandedW, roiH];
-    
+
     %Calculate the ratio of union between bounding boxes
     overlapRatio = bboxOverlapRatio(expandedTextROI, expandedTextROI, 'Union');
     overlapSize = size(overlapRatio, 1);
@@ -292,9 +292,9 @@ parfor iteration = 1:imageCount
     %Ensure that there is similarity between connected letters
     maxComponents = max(labelledROI);
     %loop through connected bounding boxes
-    for k = 1:maxComponents
+    for i = 1:maxComponents
         %find the index of connected bounding boxes
-        connectedBoxes = find(labelledROI == k);
+        connectedBoxes = find(labelledROI == i);
         %Get the bounding box heights
         heightOfBoxes = roiH(connectedBoxes);
         
@@ -312,8 +312,8 @@ parfor iteration = 1:imageCount
         %Check that there the validHeights matrix is not empty
         if (~isempty(invalidHeight))
             %Loop through invalid indexes
-            for i = 1:size(invalidHeight, 2)
-                id = invalidHeight(i);
+            for j = 1:size(invalidHeight, 2)
+                id = invalidHeight(j);
                 %Seperate the component into a new indices by creating
                 %a new 'label' above max value
                 labelledROI(id) = max(labelledROI) + 1;
@@ -441,6 +441,8 @@ parfor iteration = 1:imageCount
     
     %% Perform Text Matching using Regex
     
+    %Formats found in more detail in the script...
+    
     %Handles formats 1 and 6
     regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)((?:\d{2}){0,2})';
     %Handles formats 2
@@ -456,7 +458,7 @@ parfor iteration = 1:imageCount
     validTextDate = regexpi(detectedText, regexTextDate, 'match');
     validTextYear = regexpi(detectedText, regexTextYear, 'match');
     validNumeric = regexpi(detectedText, regexNumeric, 'match');
-       
+    
     %Concatenate matching text into string array
     expiryDates{iteration} = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
     
