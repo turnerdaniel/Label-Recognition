@@ -1,17 +1,21 @@
 %% MATLAB Script for Testing the Expiry Date Recognition Algorithm
-%All function used to display images are removed since they are irrelevant
-%when the algorithm is embedded in a system.
-
-%Will produce 4 values:
-%Precision = Measure of how relevant the results were
-%Recall = Measure of how many relevant were returned
-%Recognition Accuracy = How many dates were correct out of the correctly
-%identified bounding boxes
-%Overall Accuracy = How many dates were correct out of the entire dataset
-
 %Author: Daniel Turner
 %University: University of Lincoln
 %Date: 25/2/2019
+
+%Functions used to display images are removed since they are irrelevant in
+%the actual implementation
+
+%Will produce 8 values:
+%PRECISION = Measure of how relevant the results were
+%RECALL = Measure of how many relevant were returned
+%RECOGNITION ACCURACY = How many dates were correct out of the correctly
+%identified bounding boxes
+%OVERALL ACCURACY = How many dates were correct out of the entire dataset
+%AVERAGE TIME = The mean time for the algorithm to be completed
+%MINIMUM TIME = The fastest time the algorithm was completed
+%MAXIMUM TIME = The slowet time the algorithm was completed
+%STANDARD DEVIATION = The amount of varition in time complexity
 
 %Reset MATLAB environement
 clear; close all; clc;
@@ -36,6 +40,7 @@ precision = zeros(imageCount, 1);
 recall = zeros(imageCount, 1);
 expiryDates = cell(imageCount, 1);
 dateKnown = dateLabels.Dates;
+times = zeros(imageCount, 1);
 
 %% Execute Algorithm
 %For loop is parallelised to decrease computation time for large dataset.
@@ -43,6 +48,10 @@ dateKnown = dateLabels.Dates;
 
 %Iterate through the size of the dataset
 parfor iteration = 1:imageCount
+    %% Measure Execution Time (1/2)
+    %Start the stopwatch
+    tic;
+    
     %% Read Image
     %Load image from filepath resent in ground truth object
     I = imread(gTruth.DataSource.Source{iteration});
@@ -451,6 +460,10 @@ parfor iteration = 1:imageCount
     %Concatenate matching text into string array
     expiryDates{iteration} = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
     
+    %% Measure Execution Time (2/2)
+    %Sop the stopwatch and record time
+    times(iteration) = toc;
+    
     %% Calculate Precision and Recall
     
     %Compare the identified bounding boxes with the ground truth using a
@@ -548,3 +561,16 @@ accuracy = sum(matches) / imageCount;
 %Output to command window
 fprintf("Overall Detection & Recognition:\nAccuracy from %.0f images: %.4f\n\n", ...
     imageCount, accuracy);
+
+%% Calculate algorithm execution time
+
+%Calculate the mean, min, max and standared deviation from the execution
+%times
+avgTime = mean(times);
+minTime = min(times);
+maxTime = max(times);
+stdTime = std(times);
+
+%Output results to command window
+fprintf("Expiry Date Algorithm Time Effeciency:\nMinimum: %.4f  Maximum: %.4f\nAverage: %.4f\nStandard Deviation: %.4f\n\n", ...
+    minTime, maxTime, avgTime, stdTime);
