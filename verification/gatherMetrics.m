@@ -572,5 +572,5 @@ maxTime = max(times);
 stdTime = std(times);
 
 %Output results to command window
-fprintf("Expiry Date Algorithm Time Effeciency:\nMinimum: %.4f  Maximum: %.4f\nAverage: %.4f\nStandard Deviation: %.4f\n\n", ...
+fprintf("Expiry Date Algorithm Time Efficiency:\nMinimum: %.4f  Maximum: %.4f\nAverage: %.4f\nStandard Deviation: %.4f\n\n", ...
     minTime, maxTime, avgTime, stdTime);
