@@ -31,7 +31,8 @@ warning('off', 'images:initSize:adjustingMag');
 %Rename sample images (5 good/5 bad)
 %Can use 'PreprocessBinaryImage' 0 in OCR to speed up?
     %Update all scripts if necessary
-
+%Could merge timer into metrics function
+%Change to UI image picker
 
 %% Read image
 
@@ -298,9 +299,9 @@ labelledROI = conncomp(graph(overlapRatio));
 %Ensure that there is similarity between connected letters
 maxComponents = max(labelledROI);
 %loop through connected bounding boxes
-for k = 1:maxComponents
+for i = 1:maxComponents
     %find the index of connected bounding boxes
-    connectedBoxes = find(labelledROI == k);
+    connectedBoxes = find(labelledROI == i);
     %Get the bounding box heights
     heightOfBoxes = roiH(connectedBoxes);
     
@@ -318,8 +319,8 @@ for k = 1:maxComponents
     %Check that there the validHeights matrix is not empty
     if (~isempty(invalidHeight))
         %Loop through invalid indexes
-        for i = 1:size(invalidHeight, 2)
-            id = invalidHeight(i);
+        for j = 1:size(invalidHeight, 2)
+            id = invalidHeight(j);
             %Seperate the component into a new indices by creating
             %a new 'label' above max value
             labelledROI(id) = max(labelledROI) + 1;
@@ -380,7 +381,7 @@ expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
     filteredTextROI(:, 3), expandedH];
 
 expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
-%figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
+figure, imshow(expandedFilteredTextROIImage), title('Expand ROI');
 
 %% Perform Optical Character Recognition (OCR)
 
