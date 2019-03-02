@@ -26,7 +26,6 @@ warning('off', 'images:initSize:adjustingMag');
 
 %TODO:
 %Optimisation
-%Final Checks - the same on both scripts? Should be!
 %Test on faster computer!
 
 %% Read image
@@ -502,7 +501,7 @@ validNumeric = regexpi(detectedText, regexNumeric, 'match');
 %concatenate matching text into string array
 expiryDates = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
 
-%% Print the Date/Save to File
+%% Print the Dates or Save to File
 
 %Check to see if dates have been detected
 if (size(expiryDates, 1) > 0)
@@ -534,7 +533,7 @@ if strcmpi(buttonPress, 'Save...')
             %Close the file
             fclose(fileID);
         else
-            %Alert the user that the file wasn't saved. 
+            %Alert the user that the file wasn't saved
             fprintf("No destination selected. File was not saved.\n\n");
         end
 end
