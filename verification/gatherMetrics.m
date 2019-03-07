@@ -20,6 +20,9 @@
 %Reset MATLAB environement
 clear; close all; clc;
 
+%Clear previous warnings
+lastwarn('');
+
 %% Read Ground Truths
 %########################################################################
 %WARNING: you will need to change the local filepaths for the groundTruth 
@@ -28,9 +31,24 @@ clear; close all; clc;
 
 %Loads a table holding the Ground Truth Bounding Boxes for images in dataset
 %Need to change directories to a valid path to dataset
-load('dateGroundTruths.mat');
+load('dateGroundTruthsUSB.mat');
 %Loads a table holding the Expiry Date values for images in the dataset
 load('dateLabels.mat');
+
+[msg, msgID] = lastwarn;
+if (isequal(msgID, 'vision:groundTruth:badImageFiles'))    
+    directory = uigetdir('..', 'Select Dataset Directory...');
+    if (~isequal(directory, 0))
+        oldDataSource = fileparts(gTruth.DataSource{1});
+        newDataSource = "../dataset"; %directory;
+        alterDataSource = {[string(oldDataSource), string(newDataSource)]};
+        changeFilePaths(gTruth, alterDataSource);
+    else
+        fprintf("No image was selected. Exiting...\n\n");
+        %Exit script
+        return
+    end    
+end
 
 %Get size of dataset
 imageCount = size(gTruth.LabelData, 1);
