@@ -3,6 +3,11 @@
 %University: University of Lincoln
 %Date: 25/2/2019
 
+%#########################################################################
+%WARNING: The values calculated by this script will vary slightly across 
+%devices due to differences in MATLAB versions and CPU instruction sets.
+%#########################################################################
+
 %Functions used to display images are removed since they are irrelevant in
 %the actual implementation
 
@@ -32,7 +37,7 @@ load('dateGroundTruths.mat');
 %Loads a table holding the Expiry Date values for images in the dataset
 load('dateLabels.mat');
 
-%Perform check to ensure filepaths are accuract in groundTruth
+%Perform check to ensure file paths are accurate in groundTruth
 %Will be called for evey device except my machine due to local paths
 [~, msgID] = lastwarn;
 if (isequal(msgID, 'vision:groundTruth:badImageFiles'))
