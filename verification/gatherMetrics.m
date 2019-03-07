@@ -22,36 +22,36 @@ clear; close all; clc;
 
 %Clear previous warnings
 lastwarn('');
+%Disable groundTruth warning for incorrect dataset path
+warning('off', 'vision:groundTruth:badImageFiles');
 
 %% Read Ground Truths
-%########################################################################
-%WARNING: you will need to change the local filepaths for the groundTruth 
-%object to the correct directory on your system. Use: changeFilePaths() 
-%########################################################################
 
 %Loads a table holding the Ground Truth Bounding Boxes for images in dataset
-%Need to change directories to a valid path to dataset
 load('dateGroundTruthsUSB.mat');
 %Loads a table holding the Expiry Date values for images in the dataset
 load('dateLabels.mat');
 
-[msg, msgID] = lastwarn;
-if (isequal(msgID, 'vision:groundTruth:badImageFiles'))    
-    directory = uigetdir('..', 'Select Dataset Directory...');
-    if (~isequal(directory, 0))
-        oldDataSource = fileparts(gTruth.DataSource{1});
-        newDataSource = "../dataset"; %directory;
-        alterDataSource = {[string(oldDataSource), string(newDataSource)]};
-        changeFilePaths(gTruth, alterDataSource);
-    else
-        fprintf("No image was selected. Exiting...\n\n");
-        %Exit script
+%Perform check to ensure filepaths are accuract in groundTruth
+%Will be called for evey device except my machine due to local paths
+[~, msgID] = lastwarn;
+if (isequal(msgID, 'vision:groundTruth:badImageFiles'))
+    fprintf('Detected incorrect file paths in groundTruth...\n')
+    try
+        %Alter the paths using a correct local path
+        alterFilePaths(gTruth, '../dataset');
+        %Alert user of success
+        fprintf('Successfully located new groundTruth DataSource!\n');
+    catch
+        %Alert user of failure
+        fprintf('Unable to locate new groundTruth DataSource!\nExiting...\n');
+        %Exit script as can't compare to groundTruth
         return
-    end    
+    end
 end
 
 %Get size of dataset
-imageCount = size(gTruth.LabelData, 1);
+imageCount = 10; %size(gTruth.LabelData, 1);
 
 %Initialise metric vectors
 precision = zeros(imageCount, 1);
