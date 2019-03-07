@@ -37,19 +37,19 @@ load('dateGroundTruths.mat');
 %Loads a table holding the Expiry Date values for images in the dataset
 load('dateLabels.mat');
 
-%Perform check to ensure file paths are accurate in groundTruth
+%Perform check to ensure file paths are valid in groundTruth
 %Will be called for evey device except my machine due to local paths
 [~, msgID] = lastwarn;
 if (isequal(msgID, 'vision:groundTruth:badImageFiles'))
-    fprintf('Detected incorrect file paths in groundTruth...\n')
+    fprintf('Detected invalid file paths in groundTruth...\n')
     try
-        %Alter the paths using a correct local path
+        %Alter the paths using a valid local path
         alterFilePaths(gTruth, '../dataset');
         %Alert user of success
-        fprintf('Successfully located new groundTruth DataSource!\n');
+        fprintf('Successfully located new groundTruth DataSource!\n\n');
     catch
         %Alert user of failure
-        fprintf('Unable to locate new groundTruth DataSource!\nExiting...\n');
+        fprintf('Unable to locate new groundTruth DataSource!\nExiting...\n\n');
         %Exit script as can't compare to groundTruth
         return
     end
@@ -58,7 +58,7 @@ end
 %Get size of dataset
 imageCount = size(gTruth.LabelData, 1);
 
-%Initialise metric vectors
+%Initialise metric variables
 precision = zeros(imageCount, 1);
 recall = zeros(imageCount, 1);
 expiryDates = cell(imageCount, 1);
