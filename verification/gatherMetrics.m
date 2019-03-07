@@ -28,7 +28,7 @@ warning('off', 'vision:groundTruth:badImageFiles');
 %% Read Ground Truths
 
 %Loads a table holding the Ground Truth Bounding Boxes for images in dataset
-load('dateGroundTruthsUSB.mat');
+load('dateGroundTruths.mat');
 %Loads a table holding the Expiry Date values for images in the dataset
 load('dateLabels.mat');
 
@@ -51,7 +51,7 @@ if (isequal(msgID, 'vision:groundTruth:badImageFiles'))
 end
 
 %Get size of dataset
-imageCount = 10; %size(gTruth.LabelData, 1);
+imageCount = size(gTruth.LabelData, 1);
 
 %Initialise metric vectors
 precision = zeros(imageCount, 1);
