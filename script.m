@@ -24,9 +24,6 @@ clear; close all; clc;
 %Disable non-criticial warnings for image resizing
 warning('off', 'images:initSize:adjustingMag'); 
 
-%TODO:
-%Optimisation
-%Test on faster computer!
 
 %% Read image
 
@@ -65,7 +62,7 @@ end
 
 %% Image Pre-processing - Remove Noise, Increase Contrast & Sharpness
 
-%Perform Linear Spatial Filtering to eliminate noise
+%Perform Spatial Filtering to eliminate noise
 %Weiner removes gaussian & speckle noise while preserving edges by adapting
 %smoothing amount
 greyWeiner = wiener2(grey, [3 3]);
@@ -94,7 +91,7 @@ mserPixels = vertcat(cell2mat(mserRegions.PixelList));
 mserBW = false(imageHeight, imageWidth);
 %Convert img co-ordinates to linear image indexes
 ind = sub2ind(size(mserBW), mserPixels(:,2), mserPixels(:,1));
-%assign true to co-ordinates that match
+%Assign true to co-ordinates that match
 mserBW(ind) = true;
 figure, imshow(mserBW), title('logical MSER Image');
 
@@ -156,7 +153,7 @@ for i = 1:totalObjects
         keepImage = image & ~binaryImage;
         %Edge case where they could have matching number of objects
     elseif ccInv.NumObjects == ccReg.NumObjects
-        %Choose threshold that procuces the most pixels
+        %Choose threshold that produces the most pixels
         if ccRegSize < ccInvSize 
             keepImage = image & ~binaryImage;
         else
@@ -181,10 +178,12 @@ figure, imshow(clearSmallHoles), title('Connected-Componenent Enhanced Image');
 
 %% Remove Unlikely Candidates using Region Properties
 
-% Eccentricity = similarity to line segment (1) or cirlce (0)
-% Euler Number = Don't have many holes (max 2 | B)
+% Euler Number = Don't have many holes (max 2 | eg. B)
+% Eccentricity = similarity to line segment (1) or circle (0)
+% Extent = have very high or very low occupation of bounding box (0 vs l)
+% Solidity = Has a high amount of pixels in convex hull that are also in 
+% the region
 % Aspect Ratio = mostly square (vertical & horizontal)
-% Extent = have very high or very low occupation of bounding box (O vs l)
 
 %Label the image and get the properties of each object
 mserLabel = bwlabel(clearSmallHoles);
@@ -206,7 +205,7 @@ validEccentricity = [mserStats.Eccentricity] < 0.99;
 validExtent = [mserStats.Extent] > 0.25 & [mserStats.Extent] < 0.9;
 %The ratio between the region and the convex hull
 validSolidity = [mserStats.Solidity] > 0.4;
-%Make use of vertical and horizontal aspect ratio to ensure shape are
+%Make use of vertical and horizontal aspect ratio to ensure object is
 %roughly square = 1
 validAspectRatio = aspectRatio < 3;
 
