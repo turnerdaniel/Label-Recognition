@@ -589,13 +589,14 @@ fprintf("Overall Detection & Recognition:\nAccuracy from %.0f images: %.4f\n\n",
 
 %% Calculate algorithm execution time
 
-%Calculate the mean, min, max and standared deviation from the execution
-%times
+%Calculate the mean, min, max, standared deviation and standard error of
+%the mean from execution times
 avgTime = mean(times);
 minTime = min(times);
 maxTime = max(times);
 stdTime = std(times);
+semTime = stdTime / sqrt(imageCount);
 
 %Output results to command window
-fprintf("Expiry Date Algorithm Time Efficiency:\nMinimum: %.4f  Maximum: %.4f\nAverage: %.4f\nStandard Deviation: %.4f\n\n", ...
-    minTime, maxTime, avgTime, stdTime);
+fprintf("Expiry Date Algorithm Time Efficiency:\nMinimum: %.4f  Maximum: %.4f\nAverage: %.4f\nStandard Deviation: %.4f\nStandard Error of the Mean: %.4f\n\n", ...
+    minTime, maxTime, avgTime, stdTime, semTime);
