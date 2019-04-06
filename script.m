@@ -300,10 +300,11 @@ overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
 %that intersect
 labelledROI = conncomp(graph(overlapRatio));
 
-%Ensure that there is similarity between connected letters
-maxComponents = max(labelledROI);
-%loop through connected bounding boxes
-for i = 1:maxComponents
+%Find the total number of bounding boxes
+totalComponents = max(labelledROI);
+
+%loop through connected bounding boxes to ensure similarity 
+for i = 1:totalComponents
     %find the index of connected bounding boxes
     connectedBoxes = find(labelledROI == i);
     %Get the bounding box heights
@@ -449,7 +450,7 @@ for i = 1:ROISize
     
     %Don't correct image if it is within 7.5 degrees of 0
     %OCR is capable of reading letters most accurately at < 10 degree offset
-    if (angle > 7.5 || angle < -7.5) 
+    if (angle > 7.5 || angle < -7.5)
         ROI = imrotate(ROI, angle);
         %figure, imshow(ROI), title('corrected')
     end
@@ -469,7 +470,7 @@ end
 
 %Formats covered by Regex:
 %1. DD MMM / DD MMM YY / DD MMM YYYY / DDMMMYY / DDMMMYYYY
-%2. MMM YY / MMM YYYY / MMMYY / MMMYYYY / MMM-YY / MMM-YYYY
+%2. MMM YY / MMM YYYY / MMMYY / MMMYYYY / MMM-YY / MMM-YYYY etc.
 %3. DD/MM/YY / DD/MM/YYYY / MM/DD/YY / MM/DD/YYYY / YY/MM/DD
 %4. DD.MM.YY / DD.MM.YYYY / MM.DD.YY / MM.DD.YYYY / YY.MM.DD
 %5. DD-MM-YY / DD-MM-YYYY / MM-DD-YY / MM-DD-YYYY / YY-MM-DD
