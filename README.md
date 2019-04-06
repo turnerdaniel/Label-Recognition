@@ -16,7 +16,7 @@ git clone https://github.com/turnerdaniel/Label-Recognition
 
 Open the MATLAB IDE. Ensure that the directory containing ```script.m``` is selected as the current folder. 
 
-Enter the the following in the Command Window:
+Enter the following in the Command Window to execute the software:
 
 ```
 script
