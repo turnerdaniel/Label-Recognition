@@ -25,9 +25,13 @@ Import an image using the file selection window.
 
 ![Image Selection Window](assets/load.png "Image Selection Window")
 
-View the detected dates.
+View the detected dates. 
 
 ![Date Detections](assets/detections.png "Date Detections")
+
+They can also be saved to a file.
+
+![Save Detections](assets/save.png "Save Detections")
 
 ## Author
 
