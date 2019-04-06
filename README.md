@@ -4,7 +4,7 @@ Label Recognition is a MATLAB script which implements an expiry date detection a
 
 ## Installation
 
-MATLAB 2018b is required to execute this software. You may need to purchase a [license](https://uk.mathworks.com/pricing-licensing.html).
+MATLAB 2018b along with the Image Processing and Computer Vision Toolboxes are required to execute this software. You may need to purchase a [license](https://uk.mathworks.com/pricing-licensing.html).
 
 Afterwards, clone the repository using:
 
