@@ -11,7 +11,7 @@
 %Functions used to display images are removed since they are irrelevant in
 %the actual implementation
 
-%Will produce 8 values:
+%Will produce 9 values:
 %PRECISION = Measure of how relevant the results were
 %RECALL = Measure of how many relevant were returned
 %RECOGNITION ACCURACY = How many dates were correct out of the correctly
@@ -21,6 +21,7 @@
 %MINIMUM TIME = The fastest time the algorithm was completed
 %MAXIMUM TIME = The slowet time the algorithm was completed
 %STANDARD DEVIATION = The amount of varition in time complexity
+%STANDARD ERROR of the MEAN = 
 
 %Reset MATLAB environement
 clear; close all; clc;
@@ -580,7 +581,7 @@ for i = 1:imageCount
     end
 end
 
-%Find accuracy bycalculating ratio between matches and total number of images
+%Find accuracy by calculating ratio between matches and total number of images
 accuracy = sum(matches) / imageCount;
 
 %Output to command window
