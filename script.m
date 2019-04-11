@@ -121,7 +121,7 @@ figure, imshow(clearSmallHoles), title('Post-Processed Image');
 
 %Get the image solely containing each object and its bounding box
 mserStats = regionprops(clearSmallHoles, 'Image', 'BoundingBox');
-%Initialise variables to hold total number of objects and output
+%Initialise variables to hold total number of objects and output image
 totalObjects = size(mserStats, 1);
 CCadjustedImage = false(imageHeight, imageWidth);
 
@@ -189,19 +189,12 @@ figure, imshow(clearSmallHoles), title('Connected-Componenent Enhanced Image');
 
 %% Geometric Filtering
 
-% Euler Number = Don't have many holes (max 2 | eg. B)
-% Eccentricity = similarity to line segment (1) or circle (0)
-% Extent = have very high or very low occupation of bounding box (0 vs l)
-% Solidity = Has a high amount of pixels in convex hull that are also in 
-% the region
-% Aspect Ratio = mostly square (vertical & horizontal)
-
 %Label the image and get the properties of each object
 mserLabel = bwlabel(clearSmallHoles);
 mserStats = regionprops(clearSmallHoles, 'BoundingBox', 'Eccentricity', ...
     'EulerNumber', 'Extent', 'Solidity');
 
-%Calculte the maximum aspect ratio from horizontal and vertical direction
+%Calculte the maximum aspect ratio for horizontal and vertical direction
 bBoxes = vertcat(mserStats.BoundingBox);
 bbWidths = bBoxes(:, 3)';
 bbHeights = bBoxes(:, 4)';
@@ -288,8 +281,7 @@ roiY = textROI(:, 2);
 roiW = textROI(:, 3);
 roiH = textROI(:, 4);
 
-%Expand ROI by 2/3 the character width in horizontal direction since dates
-%are typically vertically aligned
+%Expand ROI by 2/3 the character width in horizontal direction 
 expandedX = roiX - (roiW * (2/3)); 
 expandedW = roiW + ((roiW * (2/3)) * 2);
 
@@ -328,11 +320,12 @@ for i = 1:totalComponents
     meanHeight = mean(heightOfBoxes);
     meanError = meanHeight/2;
     
-    %Find all bounding boxes that have a height that eceeds the criteria
+    %Find all bounding boxes that have a height that matches the criteria
     validBoxes = heightOfBoxes > meanHeight - meanError & heightOfBoxes < meanHeight + meanError;
+    %Get the index of all bounding boxes that don't match the criteria
     discardHeight = find(validBoxes == 0);
     
-    %Get the index of bounding boxes that don't meet the criteria
+    %Get bounding boxes that don't meet the criteria using index
     invalidHeight = connectedBoxes(discardHeight);
     
     %Check that invalidHeights is not empty
@@ -391,7 +384,7 @@ end
 filteredTextROIImage = insertShape(I, 'Rectangle', filteredTextROI, 'LineWidth', 2);
 figure, imshow(filteredTextROIImage), title('Remove Singular ROI''s');
 
-%Expand a the bounding box vertically to fully contain the text's height 
+%Expand the bounding box vertically to fully contain the text's height 
 pixelExpansion = 2;
 expandedY = filteredTextROI(:, 2) - pixelExpansion;
 expandedH = filteredTextROI(:, 4) + (2 * pixelExpansion);
@@ -403,7 +396,7 @@ expandedH = min(expandedH, imageHeight - expandedH);
 expandedFilteredTextROI = [filteredTextROI(:, 1), expandedY, ...
     filteredTextROI(:, 3), expandedH];
 
-%Display output of Rule-based text grouping stage
+%Display output of Rule-based Text Grouping stage
 expandedFilteredTextROIImage = insertShape(I, 'Rectangle', expandedFilteredTextROI, 'LineWidth', 2);
 figure, imshow(expandedFilteredTextROIImage), title('Expanded Merged ROI''s');
 
@@ -414,7 +407,7 @@ ocrROI = [expandedFilteredTextROI(:, 1), expandedFilteredTextROI(:, 2), ...
     expandedFilteredTextROI(:, 3), expandedFilteredTextROI(:, 4)];
 
 %Pre-allocate vectors & initialise variables to hold number of bboxes, OCR
-%results and the sapling points for the line of best fit
+%results and the sampling points for the line of best fit
 ROISize = size(ocrROI, 1);
 detectedText = strings(ROISize, 1);
 samplePoints = 10;
@@ -443,7 +436,7 @@ for i = 1:ROISize
     letterBoxes = vertcat(ROIstats.BoundingBox);
     
     %Get the centre of the bounding boxes. This is better than MATLAB centroids as
-    %they calculate centre of gravity 
+    %they calculate true centre
     centreX = round(mean([letterBoxes(:, 1), letterBoxes(:, 1) + letterBoxes(:, 3)], 2));
     centreY = round(mean([letterBoxes(:, 2), letterBoxes(:, 2) + letterBoxes(:, 4)], 2));
     
@@ -469,10 +462,9 @@ for i = 1:ROISize
     %hold off;
     
     %Don't correct image if it is within 7.5 degrees of 0
-    %OCR is capable of reading letters most accurately at < 10 degree offset
+    %OCR is capable of reading letters most accurately at ~< 10 degree offset
     if (angle > 7.5 || angle < -7.5)
-        %Rotate the image by the angle using nearest negithbour
-        %interpolation
+        %Rotate the image by the angle using nearest negithbour interpolation
         ROI = imrotate(ROI, angle);
         %figure, imshow(ROI), title('corrected')
     end
@@ -539,7 +531,7 @@ else
         data]);
 end
 
-%Create message box that displays message w/ option to save to file
+%Create message box that displays message with option to save to file
 buttonPress = questdlg(message, caption, 'Okay', 'Save...', 'Okay');
 
 %Check if save button is pressed
@@ -560,5 +552,5 @@ if strcmpi(buttonPress, 'Save...')
         end
 end
 
-%Output dates/text in the command window, too
+%Output dates/text in the command window
 fprintf('%s\n', message);
