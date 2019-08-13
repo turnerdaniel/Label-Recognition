@@ -32,6 +32,7 @@ classdef LabelRecogniser
             img = convertGrey(obj);
             img = preProcess(obj, img);
             img = mser(obj, img);
+            img = postProcess(obj, img);
             
             if (show == true)
                 imshow(img);
@@ -77,6 +78,20 @@ classdef LabelRecogniser
             ind = sub2ind([obj.h, obj.w], pixels(:,2), pixels(:,1));
             %Set matching pixels to white
             out(ind) = true;
+        end
+        
+        function out = postProcess(~, image)
+            %postProcess Cleanup MSER binary image
+            
+            %Define 3x3 square structuring element
+            element = strel('square', 3);
+            
+            %Perform opening to remove protrusions and small joins
+            open = imopen(image, element);
+            %Remove blobs with an area less than 100 px
+            clearNoise = bwareaopen(open, 100);
+            %Fill small holes
+            out = ~bwareaopen(~clearNoise, 3);
         end
     end
 end
