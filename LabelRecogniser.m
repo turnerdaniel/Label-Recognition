@@ -29,7 +29,7 @@ classdef LabelRecogniser
         
         function recogniseDates(obj, show)
             %recogniseDates Identify the position and textual representation of the dates shown within the image.
-            grey = convertGrey(obj);
+            grey = convertGrey(obj, obj.image);
             img = preProcess(obj, grey);
             img = mser(obj, img);
             img = postProcess(obj, img);
@@ -41,14 +41,13 @@ classdef LabelRecogniser
         end
     end
     methods (Access = private)
-        function out = convertGrey(obj)
+        function out = convertGrey(~, image)
             %convertGrey Convert an RGB image to greyscale
             
-            %Maybe use image like other functions?
-            if size(obj.image, 3) > 0
-                out = rgb2gray(obj.image);
+            if size(image, 3) > 0
+                out = rgb2gray(image);
             else
-                out = obj.image;
+                out = image;
             end
         end
         
@@ -160,4 +159,5 @@ end
 %TODO:
 %Maybe outputs should have actual names (not out?)
 %Get and Set functions for the image property - will re-calculate h & w
+    %Dependant variable?
 
