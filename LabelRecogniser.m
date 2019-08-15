@@ -29,12 +29,13 @@ classdef LabelRecogniser
         
         function recogniseDates(obj, show)
             %recogniseDates Identify the position and textual representation of the dates shown within the image.
-            img = convertGrey(obj);
-            img = preProcess(obj, img);
+            grey = convertGrey(obj);
+            img = preProcess(obj, grey);
             img = mser(obj, img);
             img = postProcess(obj, img);
+            img = connectedComponentEnhance(obj, img, grey);
             
-            if (show == true)
+            if show == true
                 imshow(img);
             end
         end
@@ -93,10 +94,67 @@ classdef LabelRecogniser
             %Fill small holes
             out = ~bwareaopen(~clearNoise, 3);
         end
+        
+        function out = connectedComponentEnhance(obj, image, greyscale)
+            %connectComponentEnhance
+            
+            stats = regionprops(image, 'Image', 'BoundingBox');
+            numObjects = size(stats, 1);
+            adjusted = false(obj.h, obj.w);
+            
+            for i = 1:numObjects
+                %Just floor? bbox = floor(stats(i).BoundingBox);
+                bbox = ceil(stats(i).BoundingBox - [0, 0, 1, 1]);
+                imageSegment = stats(i).Image;
+                
+                binarySegment = imbinarize(imcrop(greyscale, bbox));
+                %maybe 2 outputs for pre-process
+                
+                ccRegularImage = bwconncomp(imageSegment & binarySegment);
+                ccInverseImage = bwconncomp(imageSegment & ~binarySegment);
+                
+                if ccRegularImage.NumObjects == 0 && ccInverseImage.NumObjects ~= 0
+                    %Use inverse image
+                    keepImage = imageSegment & ~binarySegment;
+                elseif ccInverseImage.NumObjects == 0 && ccRegularImage.NumObjects ~= 0
+                    %Use regular image
+                    keepImage = imageSegment & binarySegment;
+                elseif ccRegularImage.NumObjects < ccInverseImage.NumObjects
+                    %Use regular image
+                    keepImage = imageSegment & binarySegment;
+                elseif ccInverseImage.NumObjects < ccRegularImage.NumObjects
+                    %Use inverse image
+                    keepImage = imageSegment & ~binarySegment;
+                %Edge case where they could have matching number of objects
+                elseif ccInverseImage.NumObjects == ccRegularImage.NumObjects
+                    %Concatenate list to handle multiple objects in an image
+                    ccRegularSize = size(cat(1, ccRegularImage.PixelIdxList{:}), 1);
+                    ccInverseSize = size(cat(1, ccInverseImage.PixelIdxList{:}), 1);
+                    %Choose threshold that produces the most pixels
+                    if ccRegularSize < ccInverseSize 
+                        keepImage = imageSegment & ~binarySegment;
+                    else
+                        keepImage = imageSegment & binarySegment;
+                    end
+                else
+                    %Use regular image as last resort
+                    keepImage = imageSegment & binarySegment;
+                end
+                
+                %Replace existing image locations with new enhanced images
+                adjusted(bbox(2):bbox(2) + bbox(4), bbox(1):bbox(1) ...
+                    + bbox(3)) = keepImage;  
+            end
+            
+            %Remove blobs with an area below 100 pixels
+            clearNoise = bwareaopen(adjusted, 20); 
+            %Fill small holes by inverting image so the background becomes foreground
+            out = ~bwareaopen(~clearNoise, 3);
+        end
     end
 end
 
 %TODO:
-%Maybe add Image or set this as image class?
+%Maybe outputs should have actual names (not out?)
 %Get and Set functions for the image property - will re-calculate h & w
 
