@@ -5,8 +5,8 @@ classdef LabelRecogniser
     %packaging for use with a date verification system by food
     %manufacturers.
     
-    properties (Access = public)
-        image % Image used for recognition
+    properties 
+        image; % Image used for recognition
         thresholdDelta = 0.3; % Delta used for MSER
     end
     properties (Access = private)
@@ -14,7 +14,7 @@ classdef LabelRecogniser
         w % width of input image
     end
     
-    methods (Access = public)
+    methods
         function obj = LabelRecogniser(imageFilePath)
             %LabelRecogniser Construct an instance of this class from a filepath to an image
             %
@@ -23,7 +23,7 @@ classdef LabelRecogniser
                 obj.image = imread(imageFilePath);
                 [obj.h, obj.w, ~] = size(obj.image);
             catch
-                error("Cannot read image due to an invalid file path or type.");
+                error("LabelRecogniser:BadFile", "Cannot read image due to an invalid file path or type.");
             end
         end
         
@@ -150,6 +150,9 @@ classdef LabelRecogniser
             clearNoise = bwareaopen(adjusted, 20); 
             %Fill small holes by inverting image so the background becomes foreground
             out = ~bwareaopen(~clearNoise, 3);
+        end
+        
+        function out = geometricFilter(obj, image)
         end
     end
 end
