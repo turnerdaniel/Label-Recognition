@@ -96,25 +96,26 @@ classdef LabelRecogniser
         end
         
         function out = connectedComponentEnhance(obj, image, greyscale)
-            %connectComponentEnhance
-            
-            %Something wrong here...
+            %connectComponentEnhance Perform connected component enhancement to clean up binary MSER image
             
             stats = regionprops(image, 'Image', 'BoundingBox');
             numObjects = size(stats, 1);
             adjusted = false(obj.h, obj.w);
             
             for i = 1:numObjects
-                %Just floor? bbox = floor(stats(i).BoundingBox);
+                %%%%%Just floor? bbox = floor(stats(i).BoundingBox);
+                %Get bounding box and image for current object
                 bbox = ceil(stats(i).BoundingBox - [0, 0, 1, 1]);
                 imageSegment = stats(i).Image;
-                
+                %Threshold the cropped greyscale image using Otsu's Method
                 binarySegment = imbinarize(imcrop(greyscale, bbox));
-                %maybe 2 outputs for pre-process
-                
+                %Identify connected components in the intersection between binary image
+                %and thresholded image
                 ccRegularImage = bwconncomp(imageSegment & binarySegment);
                 ccInverseImage = bwconncomp(imageSegment & ~binarySegment);
                 
+                %Check objects to find which has the fewest number of components above 0 which
+                %will likely have the appropriate threshold
                 if ccRegularImage.NumObjects == 0 && ccInverseImage.NumObjects ~= 0
                     %Use inverse image
                     keepImage = imageSegment & ~binarySegment;
@@ -161,7 +162,7 @@ classdef LabelRecogniser
             stats = regionprops(image, 'BoundingBox', 'Eccentricity', ...
                 'EulerNumber', 'Extent', 'Solidity');
 
-            %Calculte the maximum aspect ratio for horizontal and vertical direction
+            %Calculate the maximum aspect ratio for horizontal and vertical direction
             bboxes = vertcat(stats.BoundingBox);
             bbWidths = bboxes(:, 3).';
             bbHeights = bboxes(:, 4).';
