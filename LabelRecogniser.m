@@ -34,9 +34,10 @@ classdef LabelRecogniser
             img = mser(obj, img);
             img = postProcess(obj, img);
             img = connectedComponentEnhance(obj, img, grey);
+            img = geometricFilter(obj, img);
             
             if show == true
-                imshow(img);
+                figure, imshow(img), title("img");
             end
         end
     end
@@ -97,6 +98,8 @@ classdef LabelRecogniser
         function out = connectedComponentEnhance(obj, image, greyscale)
             %connectComponentEnhance
             
+            %Something wrong here...
+            
             stats = regionprops(image, 'Image', 'BoundingBox');
             numObjects = size(stats, 1);
             adjusted = false(obj.h, obj.w);
@@ -151,7 +154,35 @@ classdef LabelRecogniser
             out = ~bwareaopen(~clearNoise, 3);
         end
         
-        function out = geometricFilter(obj, image)
+        function out = geometricFilter(~, image)
+            
+            %Label the image and get the properties of each object
+            label = bwlabel(image);
+            stats = regionprops(image, 'BoundingBox', 'Eccentricity', ...
+                'EulerNumber', 'Extent', 'Solidity');
+
+            %Calculte the maximum aspect ratio for horizontal and vertical direction
+            bboxes = vertcat(stats.BoundingBox);
+            bbWidths = bboxes(:, 3).';
+            bbHeights = bboxes(:, 4).';
+            aspectRatio = max(bbWidths ./ bbHeights, bbHeights ./ bbWidths);
+
+            %Keep blobs that have less than 3 holes in them. Need to compensate for noise
+            validEulerNo = [stats.EulerNumber] >= -2;
+            %Keep blobs that are not perfect lines (eg. barcodes)
+            validEccentricity = [stats.Eccentricity] < 0.99;
+            %Keep blobs that fall within normal distribution of Area to BBox ratio
+            validExtent = [stats.Extent] > 0.25 & [stats.Extent] < 0.9;
+            %Keep blobs that do not have significant convex areas
+            validSolidity = [stats.Solidity] > 0.4;
+            %Keep blobs that are not extremely elongated 
+            validAspectRatio = aspectRatio < 3;
+
+            %Find the index of all objects that have valid properties
+            keep = find(validEulerNo & validEccentricity & validExtent & ...
+                validSolidity & validAspectRatio);
+            %Return pixels that are at the valid indexes for the image
+            out = ismember(label, keep);
         end
     end
 end
