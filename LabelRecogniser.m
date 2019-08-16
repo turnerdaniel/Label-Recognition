@@ -29,9 +29,9 @@ classdef LabelRecogniser
         
         function recogniseDates(obj, show)
             %recogniseDates Identify the position and textual representation of the dates shown within the image.
-            grey = convertGrey(obj, obj.image);
-            img = preProcess(obj, grey);
-            img = mser(obj, img);
+            img = convertGrey(obj, obj.image);
+            grey = preProcess(obj, img);
+            img = mser(obj, grey);
             img = postProcess(obj, img);
             img = connectedComponentEnhance(obj, img, grey);
             img = geometricFilter(obj, img);
