@@ -8,6 +8,7 @@ classdef LabelRecogniser
     properties 
         image; % Image used for recognition
         thresholdDelta = 0.3; % Delta used for MSER
+        strokeWidthVariationThreshold = 0.4; % Maximum difference in the width of each stroke in letters
     end
     properties (Access = private)
         h % height of input image
@@ -35,6 +36,7 @@ classdef LabelRecogniser
             img = postProcess(obj, img);
             img = connectedComponentEnhance(obj, img, grey);
             img = geometricFilter(obj, img);
+            img = strokeWidthTransform(obj, img);
             
             if show == true
                 figure, imshow(img), title("img");
@@ -185,6 +187,50 @@ classdef LabelRecogniser
             %Return pixels that are at the valid indexes for the image
             out = ismember(label, keep);
         end
+        
+        function out = strokeWidthTransform(~, image)
+            %Label the image and get the smallet image encapsulating each object
+            label = bwlabel(image);
+            stats = regionprops(image, 'Image');
+
+            %Initialise variables that hold the number of objects and their stroke
+            %width variations
+            numObjects = size(stats, 1);
+            swVariations = zeros(1, numObjects);
+
+            %Define the maximum variation in stroke width for letters
+            swVariationThresh = 0.4;
+
+            %Loop through all objects in image
+            for i = 1:numObjects
+                %Get the image conting just the object
+                imageSegment = stats(i).Image;
+
+                %Pad the image with 0's to avoid stroke width being affected by boundary
+                paddedimage = padarray(imageSegment, [1 1]);
+
+                %Perform Distance Transform
+                distanceTransform = bwdist(~paddedimage);
+
+                %Perform thinning until Skeleton is created
+                skeletonTransform = bwmorph(paddedimage, 'thin', inf);
+
+                %Retrieve the stroke width values for the image
+                strokeWidths = distanceTransform(skeletonTransform);
+
+                %Calculate the variation in stroke widths
+                swVariations(i) = std(strokeWidths)/mean(strokeWidths);
+            end
+
+            %Find valid stroke widths that are below the variation threshold
+            validStrokeWidths = swVariations < swVariationThresh;
+            %Find the index of these objects
+            keep = find(validStrokeWidths);
+            %Create an image made of objects that are below the variation threshold
+            out = ismember(label, keep);
+        end
+        
+        %Create own f(x) for orientation correction
     end
 end
 
