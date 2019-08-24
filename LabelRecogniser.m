@@ -19,13 +19,9 @@ classdef LabelRecogniser
         function obj = LabelRecogniser(imageFilePath)
             %LabelRecogniser Construct an instance of this class from a filepath to an image
             %
-            %Must be in a valid image format (.jpeg, .png, etc.)
-            try
-                obj.image = imread(imageFilePath);
-                [obj.h, obj.w, ~] = size(obj.image);
-            catch
-                error("LabelRecogniser:BadFile", "Cannot read image due to an invalid file path or type.");
-            end
+            obj.image = imageFilePath;
+            
+            [obj.h, obj.w, ~] = size(obj.image); %dependant vars
         end
         
         function recogniseDates(obj, show)
@@ -41,6 +37,28 @@ classdef LabelRecogniser
             
             if show == true
                 figure, imshow(img), title("img");
+            end
+        end
+        
+        function obj = set.image(obj, value)
+            disp('setter called')
+            switch class(value)
+                case {'char', 'string'}
+                    try
+                        obj.image = imread(value);
+                    catch
+                        error("LabelRecogniser:BadImageFile", "Cannot read image due to an invalid file type.");
+                    end
+                    
+                case 'uint8'
+                    if ~isvector(value)
+                        obj.image = value;
+                    else
+                        error("LabelRecogniser:BadImageDimensions", "Image dimensions are too small.");
+                    end
+                    
+                otherwise
+                    error("LabelRecogniser:BadImage", "Invalid data type. Must be a file location or uint8 array.");
             end
         end
     end
