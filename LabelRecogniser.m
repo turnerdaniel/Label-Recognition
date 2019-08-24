@@ -37,6 +37,7 @@ classdef LabelRecogniser
             img = connectedComponentEnhance(obj, img, grey);
             img = geometricFilter(obj, img);
             img = strokeWidthTransform(obj, img);
+            bboxes = textGrouping(obj, img);
             
             if show == true
                 figure, imshow(img), title("img");
@@ -230,6 +231,121 @@ classdef LabelRecogniser
             out = ismember(label, keep);
         end
         
+        function out = textGrouping(obj, image)
+            %Get the bounding box for each object and convert to usable coordinates
+            textStats = regionprops(image, 'BoundingBox');
+            textROI = vertcat(textStats.BoundingBox);
+
+            %Seperate bounding box into seperate variables for manipulation
+            roiX = textROI(:, 1);
+            roiY = textROI(:, 2);
+            roiW = textROI(:, 3);
+            roiH = textROI(:, 4);
+
+            %Expand ROI by 2/3 the character width in horizontal direction 
+            expandedX = roiX - (roiW * (2/3)); 
+            expandedW = roiW + ((roiW * (2/3)) * 2);
+
+            %Ensure that ROI is within bounds of the image
+            expandedX = max(expandedX, 1);
+            expandedW = min(expandedW, obj.w - expandedX);
+
+            %Create expanded bounding boxes
+            expandedTextROI = [expandedX, roiY, expandedW, roiH];
+            
+            %Calculate the ratio of union between bounding boxes
+            overlapRatio = bboxOverlapRatio(expandedTextROI, expandedTextROI, 'Union');
+            overlapSize = size(overlapRatio, 1);
+
+            %Remove union with own Bounding Box
+            overlapRatio(1:overlapSize + 1:overlapSize^2) = 0;
+
+            %Create node graph of connected Bounding Boxes & find the index of boxes
+            %that intersect
+            labelledROI = conncomp(graph(overlapRatio));
+
+            %Find the total number of bounding boxes
+            totalComponents = max(labelledROI);
+
+            %loop through connected bounding boxes
+            for i = 1:totalComponents
+                %find the index of connected bounding boxes
+                connectedBoxes = find(labelledROI == i);
+                %Get their heights
+                heightOfBoxes = roiH(connectedBoxes);
+
+                %Calculate the average height of connected bounding boxes
+                meanHeight = mean(heightOfBoxes);
+                meanError = meanHeight/2;
+
+                %Find all bounding boxes that have a height that matches the criteria
+                validBoxes = heightOfBoxes > meanHeight - meanError & heightOfBoxes < meanHeight + meanError;
+                %Get the index of all bounding boxes that don't match the criteria
+                invalidHeight = connectedBoxes(validBoxes == 0);
+
+                %Check that invalidHeights is not empty
+                if (~isempty(invalidHeight))
+                    %Loop through invalid indexes
+                    for j = 1:size(invalidHeight, 2)
+                        %Get the id of the bounding box with an invalid height
+                        id = invalidHeight(j);
+                        %Seperate the component into a new indices by creating
+                        %a new 'label' above max value
+                        labelledROI(id) = max(labelledROI) + 1;
+                    end
+                end
+            end
+
+            %Find the minimum values of X & Y and the maximum values of W & H for each 
+            %of the intersecting bounding boxes to form encompassing bounding boxes
+            labelledROI = labelledROI.';
+            x1 = accumarray(labelledROI, expandedX, [], @min);
+            y1 = accumarray(labelledROI, roiY, [], @min);
+            x2 = accumarray(labelledROI, expandedX + expandedW, [], @max);
+            y2 = accumarray(labelledROI, roiY + roiH, [], @max);
+
+            %Create merged bounding boxes in [X Y H W] format
+            mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
+            
+            %Calculate size of labels after updating connected bounding boxes
+            labelSizes = histcounts(labelledROI.', max(labelledROI), ...
+                'BinMethod', 'integers');
+
+            %Remove single, unconnected bounding boxes
+            wordCandidates = labelSizes > 1;
+            filteredTextROI = mergedTextROI(wordCandidates, :);
+
+            %Get the bounding boxes of removed objects
+            removePixelsROI = mergedTextROI(~wordCandidates, :);
+            %Ensure the bounding box isn't empty
+            removePixelsROI(all(~removePixelsROI, 2), :) = [];
+
+            %Get the [X Y H W] values of bounding box accounting for real values
+            removeMinX = ceil(removePixelsROI(:, 1));
+            removeMaxX = round(removeMinX + removePixelsROI(:, 3));
+            removeMinY = ceil(removePixelsROI(:, 2));
+            removeMaxY = round(removeMinY + removePixelsROI(:, 4));
+
+            %Remove single, unconnected bounding boxes for binary image
+            removeROIImage = image;
+            for i = 1:size(removePixelsROI, 1)
+                %Set pixels to 0 inside bounding boxes that need to be removed
+                removeROIImage(removeMinY(i):removeMaxY(i), removeMinX(i):removeMaxX(i)) = 0; 
+            end
+
+            %Expand the bounding box vertically to fully contain the text's height 
+            pixelExpansion = 2;
+            expandedY = filteredTextROI(:, 2) - pixelExpansion;
+            expandedH = filteredTextROI(:, 4) + (2 * pixelExpansion);
+            %Ensure that ROI is within bounds of the image
+            expandedY = max(expandedY, 1);
+            expandedH = min(expandedH, obj.h - expandedH);
+
+            %Create expanded bounding boxes in appropriate format
+            out = [filteredTextROI(:, 1), expandedY, filteredTextROI(:, 3), ... 
+                expandedH];
+        end
+        
         %Create own f(x) for orientation correction
     end
 end
@@ -238,4 +354,5 @@ end
 %Maybe outputs should have actual names (not out?)
 %Get and Set functions for the image property - will re-calculate h & w
     %Dependant variable?
+%Change var names for textGrouping()
 
