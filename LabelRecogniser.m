@@ -16,12 +16,11 @@ classdef LabelRecogniser
     end
     
     methods
-        function obj = LabelRecogniser(imageFilePath)
+        function obj = LabelRecogniser(pathToImage)
             %LabelRecogniser Construct an instance of this class from a filepath to an image
             %
-            obj.image = imageFilePath;
             
-            [obj.h, obj.w, ~] = size(obj.image); %dependant vars
+            obj.image = pathToImage;
         end
         
         function recogniseDates(obj, show)
@@ -41,7 +40,6 @@ classdef LabelRecogniser
         end
         
         function obj = set.image(obj, value)
-            disp('setter called')
             switch class(value)
                 case {'char', 'string'}
                     try
@@ -49,10 +47,12 @@ classdef LabelRecogniser
                     catch
                         error("LabelRecogniser:BadImageFile", "Cannot read image due to an invalid file type.");
                     end
+                    obj = obj.updateImageDimensions();
                     
                 case 'uint8'
                     if ~isvector(value)
                         obj.image = value;
+                        obj = obj.updateImageDimensions();
                     else
                         error("LabelRecogniser:BadImageDimensions", "Image dimensions are too small.");
                     end
@@ -63,6 +63,10 @@ classdef LabelRecogniser
         end
     end
     methods (Access = private)
+        function obj = updateImageDimensions(obj)
+            [obj.h, obj.w, ~] = size(obj.image);
+        end
+        
         function out = convertGrey(~, image)
             %convertGrey Convert an RGB image to greyscale
             
