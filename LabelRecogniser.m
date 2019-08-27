@@ -6,7 +6,7 @@ classdef LabelRecogniser
     %manufacturers.
     
     properties 
-        image; % Image used for recognition
+        image; % Image matrix used for recognition
         thresholdDelta = 0.3; % Delta used for MSER
         strokeWidthVariationThreshold = 0.4; % Maximum difference in the width of each stroke in letters
     end
@@ -255,14 +255,14 @@ classdef LabelRecogniser
         
         function out = textGrouping(obj, image)
             %Get the bounding box for each object and convert to usable coordinates
-            textStats = regionprops(image, 'BoundingBox');
-            textROI = vertcat(textStats.BoundingBox);
+            stats = regionprops(image, 'BoundingBox');
+            ROIs = vertcat(stats.BoundingBox);
 
             %Seperate bounding box into seperate variables for manipulation
-            roiX = textROI(:, 1);
-            roiY = textROI(:, 2);
-            roiW = textROI(:, 3);
-            roiH = textROI(:, 4);
+            roiX = ROIs(:, 1);
+            roiY = ROIs(:, 2);
+            roiW = ROIs(:, 3);
+            roiH = ROIs(:, 4);
 
             %Expand ROI by 2/3 the character width in horizontal direction 
             expandedX = roiX - (roiW * (2/3)); 
@@ -273,10 +273,10 @@ classdef LabelRecogniser
             expandedW = min(expandedW, obj.w - expandedX);
 
             %Create expanded bounding boxes
-            expandedTextROI = [expandedX, roiY, expandedW, roiH];
+            expandedROI = [expandedX, roiY, expandedW, roiH];
             
             %Calculate the ratio of union between bounding boxes
-            overlapRatio = bboxOverlapRatio(expandedTextROI, expandedTextROI, 'Union');
+            overlapRatio = bboxOverlapRatio(expandedROI, expandedROI, 'Union');
             overlapSize = size(overlapRatio, 1);
 
             %Remove union with own Bounding Box
@@ -294,14 +294,14 @@ classdef LabelRecogniser
                 %find the index of connected bounding boxes
                 connectedBoxes = find(labelledROI == i);
                 %Get their heights
-                heightOfBoxes = roiH(connectedBoxes);
+                boxHeight = roiH(connectedBoxes);
 
                 %Calculate the average height of connected bounding boxes
-                meanHeight = mean(heightOfBoxes);
+                meanHeight = mean(boxHeight);
                 meanError = meanHeight/2;
 
                 %Find all bounding boxes that have a height that matches the criteria
-                validBoxes = heightOfBoxes > meanHeight - meanError & heightOfBoxes < meanHeight + meanError;
+                validBoxes = boxHeight > meanHeight - meanError & boxHeight < meanHeight + meanError;
                 %Get the index of all bounding boxes that don't match the criteria
                 invalidHeight = connectedBoxes(validBoxes == 0);
 
@@ -321,10 +321,10 @@ classdef LabelRecogniser
             %Find the minimum values of X & Y and the maximum values of W & H for each 
             %of the intersecting bounding boxes to form encompassing bounding boxes
             labelledROI = labelledROI.';
-            x1 = accumarray(labelledROI, expandedX, [], @min);
-            y1 = accumarray(labelledROI, roiY, [], @min);
-            x2 = accumarray(labelledROI, expandedX + expandedW, [], @max);
-            y2 = accumarray(labelledROI, roiY + roiH, [], @max);
+            x1 = accumarray(labelledROI, expandedX, [], @min);              %    |------------(x2,y2)
+            y1 = accumarray(labelledROI, roiY, [], @min);                   %    |               |
+            x2 = accumarray(labelledROI, expandedX + expandedW, [], @max);  %    |               |
+            y2 = accumarray(labelledROI, roiY + roiH, [], @max);            % (x1,y1)------------|
 
             %Create merged bounding boxes in [X Y H W] format
             mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
@@ -356,9 +356,9 @@ classdef LabelRecogniser
             end
 
             %Expand the bounding box vertically to fully contain the text's height 
-            pixelExpansion = 2;
-            expandedY = filteredTextROI(:, 2) - pixelExpansion;
-            expandedH = filteredTextROI(:, 4) + (2 * pixelExpansion);
+            expansionValue = 2;
+            expandedY = filteredTextROI(:, 2) - expansionValue;
+            expandedH = filteredTextROI(:, 4) + (2 * expansionValue);
             %Ensure that ROI is within bounds of the image
             expandedY = max(expandedY, 1);
             expandedH = min(expandedH, obj.h - expandedH);
@@ -374,7 +374,5 @@ end
 
 %TODO:
 %Maybe outputs should have actual names (not out?)
-%Get and Set functions for the image property - will re-calculate h & w
-    %Dependant variable?
 %Change var names for textGrouping()
 
