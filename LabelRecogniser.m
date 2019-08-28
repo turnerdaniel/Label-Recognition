@@ -32,7 +32,7 @@ classdef LabelRecogniser
             img = connectedComponentEnhance(obj, img, grey);
             img = geometricFilter(obj, img);
             img = strokeWidthTransform(obj, img);
-            bboxes = textGrouping(obj, img);
+            [img, bboxes] = textGrouping(obj, img);
             
             if show == true
                 figure, imshow(img), title("img");
@@ -253,7 +253,11 @@ classdef LabelRecogniser
             out = ismember(label, keep);
         end
         
-        function out = textGrouping(obj, image)
+        function [image, out] = textGrouping(obj, image)
+            
+            %Ensure that there are 2 output arguments
+            nargoutchk(2, 2);
+            
             %Get the bounding box for each object and convert to usable coordinates
             stats = regionprops(image, 'BoundingBox');
             ROIs = vertcat(stats.BoundingBox);
@@ -349,10 +353,9 @@ classdef LabelRecogniser
             removeMaxY = round(removeMinY + removePixelsROI(:, 4));
 
             %Remove single, unconnected bounding boxes for binary image
-            removeROIImage = image;
             for i = 1:size(removePixelsROI, 1)
                 %Set pixels to 0 inside bounding boxes that need to be removed
-                removeROIImage(removeMinY(i):removeMaxY(i), removeMinX(i):removeMaxX(i)) = 0; 
+                image(removeMinY(i):removeMaxY(i), removeMinX(i):removeMaxX(i)) = 0; 
             end
 
             %Expand the bounding box vertically to fully contain the text's height 
@@ -367,12 +370,10 @@ classdef LabelRecogniser
             out = [filteredTextROI(:, 1), expandedY, filteredTextROI(:, 3), ... 
                 expandedH];
         end
-        
-        %Create own f(x) for orientation correction
     end
 end
 
 %TODO:
 %Maybe outputs should have actual names (not out?)
-%Change var names for textGrouping()
+%Two mndatory outputs for textGrouping() (img an bboxs)
 
