@@ -33,6 +33,8 @@ classdef LabelRecogniser
             img = geometricFilter(obj, img);
             img = strokeWidthTransform(obj, img);
             [img, bboxes] = textGrouping(obj, img);
+            txt = characterRecognition(obj, img, bboxes);
+            disp(txt);
             
             if show == true
                 figure, imshow(img), title("img");
@@ -370,10 +372,82 @@ classdef LabelRecogniser
             out = [filteredTextROI(:, 1), expandedY, filteredTextROI(:, 3), ... 
                 expandedH];
         end
+              
+        function out = characterRecognition(obj, image, bboxes)            
+            %Pre-allocate vectors & initialise variables to hold number of bboxes, OCR
+            %results and the sampling points for the line of best fit
+            numObjects = size(bboxes, 1);
+            out = strings(numObjects, 1);
+            samplePoints = 10;
+
+            %Loop through text lines
+            for i = 1:numObjects
+                %Crop binary image using expanded bounding boxes
+                roi = imcrop(image, bboxes(i, :));
+
+                %Remove pixels touching the edge since they are probably not related to
+                %text
+                roi = imclearborder(roi);
+
+                %Get minimum Bounding Boxes for each letter
+                ROIstats = regionprops(roi, 'BoundingBox');
+
+                %Check that there is more than one object in image
+                if (size(ROIstats, 1) <= 1)
+                    %skip iteration since a date won't be one letter long & can't
+                    %interpolate a line of best fit from one point
+                    continue
+                end
+
+                %Convert to 4xN matrix for operations
+                letterBoxes = vertcat(ROIstats.BoundingBox);
+
+                %Get the centre of the bounding boxes. This is better than MATLAB centroids as
+                %they calculate true centre
+                centreX = round(mean([letterBoxes(:, 1), letterBoxes(:, 1) + letterBoxes(:, 3)], 2));
+                centreY = round(mean([letterBoxes(:, 2), letterBoxes(:, 2) + letterBoxes(:, 4)], 2));
+
+                %Calculate line of best fit coeffecients using the centre of letters
+                bestFit = polyfit(centreX, centreY, 1);
+
+                %Create linearly spaced vector of 10 sample points from 1 to width of
+                %the image 
+                xValues = linspace(1, size(roi, 2), samplePoints);
+
+                %Estimate the values of y at x values using the best fit coeffecient 
+                %to create a line of best fit
+                yValues = polyval(bestFit, xValues);
+
+                %Calculate the line of best fit's angle
+                angle = atan2d(yValues(samplePoints) - yValues(1), ...
+                    xValues(samplePoints) - xValues(1));
+
+                %Don't correct image if it is within 7.5 degrees of 0
+                %OCR is capable of reading letters most accurately at ~< 10 degree offset
+                if (angle > 7.5 || angle < -7.5)
+                    %Rotate the image by the angle using nearest negithbour interpolation
+                    roi = imrotate(roi, angle);
+                    %figure, imshow(ROI), title('corrected')
+                end
+
+                %Perform OCR on the image using MATLAB's Tesseract-OCR 3.02 implementation
+                %Specifying 'Block' will ensure that it looks for one or more horizontal text lines
+                %Specifying the character set will reduce the chance of confusion with
+                %characters that cannot be found in dates
+                ocrOutput = ocr(roi, 'TextLayout', 'Block', 'CharacterSet', ...
+                    '1234567890ABCDEFGHIJLMNOPRSTUVYabcdefghijlmnoprstuvy/.-:');
+
+                %Store the detected text
+                out(i) = ocrOutput.Text;
+            end
+        end
     end
 end
 
 %TODO:
 %Maybe outputs should have actual names (not out?)
-%Two mndatory outputs for textGrouping() (img an bboxs)
+%Test last f(x)'s
+%Could maybe do regionprops on whole image then segement into regions for
 
+%Split into 2 f(x)'s
+%orientation correction.
