@@ -35,6 +35,7 @@ classdef LabelRecogniser
             img = strokeWidthTransform(obj, img);
             [img, bboxes] = textGrouping(obj, img);
             txt = characterRecognition(obj, img, bboxes);
+            txt = dateMatching(obj, txt);
             disp(txt);
             
             if show == true
@@ -402,7 +403,7 @@ classdef LabelRecogniser
             end
         end
               
-        function out = characterRecognition(obj, image, bboxes)            
+        function out = characterRecognition(obj, image, bboxes)
             %Pre-allocate vectors & initialise variables to hold number of bboxes, OCR
             %results and the sampling points for the line of best fit
             numBboxes = size(bboxes, 1);
@@ -440,12 +441,31 @@ classdef LabelRecogniser
                 out(i) = ocrOutput.Text;
             end
         end
+        
+        function out = dateMatching(~, text)
+            
+            regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)((?:\d{2}){0,2})';
+            regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)(?:\d{2}){1,2}';
+            regexNumeric = '(\d{1,2})([\/\\\-\.])(\d{1,2})(\2)((?:\d{2}){1,2})';
+
+            %Remove newline characters from the end of the text
+            text = strip(text, newline);
+
+            %Perform case-insensitive regular expression matching for dates, returning
+            %a cell array of matching text
+            validTextDate = regexpi(text, regexTextDate, 'match');
+            validTextYear = regexpi(text, regexTextYear, 'match');
+            validNumeric = regexpi(text, regexNumeric, 'match');
+
+            %concatenate matching text into single string array
+            out = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
+        end
     end
 end
 
 %{ 
 TODO:
 Maybe outputs should have actual names (not out?)
-Test last f(x)'s
-Could maybe do regionprops on whole image then segement into regions for
+Could maybe do regionprops on whole image then segement into regions
+Handle no dates found in dateMatching function (return -1/error?)
 %} 
