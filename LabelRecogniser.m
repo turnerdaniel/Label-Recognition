@@ -1,9 +1,11 @@
 classdef LabelRecogniser
-    %LabelRecogniser Expiry Date Detection and Recognition Class.
+    %LabelRecogniser Expiry Date Detection and Recognition from an image.
     %
-    %Enables the detection and recognition of expiry dates from food 
-    %packaging for use with a date verification system by food
-    %manufacturers.
+    %   Enables the detection and recognition of expiry dates from images 
+    %   of food packaging for use within a date verification system.  
+    %
+    %   LabelRecogniser(image) initialises the class with an image. This 
+    %   can be a file path to an image or a uint8 image matrix.
     
     properties 
         image; % Image matrix used for recognition
@@ -12,20 +14,20 @@ classdef LabelRecogniser
         samplingPoints = 10; % Number of points used for estimating the text orientation
     end
     properties (Access = private)
-        h % height of input image
-        w % width of input image
+        height % height of input image
+        width % width of input image
     end
     
     methods
-        function obj = LabelRecogniser(pathToImage)
-            %LabelRecogniser Construct an instance of this class from a filepath to an image
-            %
+        function obj = LabelRecogniser(img)
+            %LabelRecogniser Construct an instance of this class from a filepath or uint8 image matrix.
             
-            obj.image = pathToImage;
+            obj.image = img;
         end
         
         function recogniseDates(obj, show)
             %recogniseDates Identify the position and textual representation of the dates shown within the image.
+            
             img = convertGrey(obj, obj.image);
             grey = preProcess(obj, img);
             img = mser(obj, grey);
@@ -68,7 +70,9 @@ classdef LabelRecogniser
     end
     methods (Access = private)
         function obj = updateImageDimensions(obj)
-            [obj.h, obj.w, ~] = size(obj.image);
+            %updateImageDimensions Update the height an width properties according to the current image
+            
+            [obj.height, obj.width, ~] = size(obj.image);
         end
         
         function out = convertGrey(~, image)
@@ -96,7 +100,7 @@ classdef LabelRecogniser
             %mser Detect text candiates using Maximally Stable Extremal Regions
             
             %Initialise logical image with necessary dimensions
-            out = false(obj.h, obj.w);
+            out = false(obj.height, obj.width);
             
             %Could make parameters editable?
             mser = detectMSERFeatures(image, 'RegionAreaRange', [150 1500], ...
@@ -105,7 +109,7 @@ classdef LabelRecogniser
             %Concatenate pixel coordinates from MSER as Nx2 matrix
             pixels = cell2mat(mser.PixelList);            
             %Convert img co-ordinates to linear image indexes
-            ind = sub2ind([obj.h, obj.w], pixels(:,2), pixels(:,1));
+            ind = sub2ind([obj.height, obj.width], pixels(:,2), pixels(:,1));
             %Set matching pixels to white
             out(ind) = true;
         end
@@ -129,7 +133,7 @@ classdef LabelRecogniser
             
             stats = regionprops(image, 'Image', 'BoundingBox');
             numObjects = size(stats, 1);
-            adjusted = false(obj.h, obj.w);
+            adjusted = false(obj.height, obj.width);
             
             for i = 1:numObjects
                 %%%%%Just floor? bbox = floor(stats(i).BoundingBox);
@@ -185,6 +189,7 @@ classdef LabelRecogniser
         end
         
         function out = geometricFilter(~, image)
+            %geometricFilter Remove unlikely text candidates using geometric properties
             
             %Label the image and get the properties of each object
             label = bwlabel(image);
@@ -216,6 +221,8 @@ classdef LabelRecogniser
         end
         
         function out = strokeWidthTransform(~, image)
+            %strokeWidthTransform Remove unlikley text candidates based upon the width of the characters
+            
             %Label the image and get the smallet image encapsulating each object
             label = bwlabel(image);
             stats = regionprops(image, 'Image');
@@ -258,6 +265,7 @@ classdef LabelRecogniser
         end
         
         function [image, out] = textGrouping(obj, image)
+            %textGrouping Establish bounding boxes around potential dates using a set of rules
             
             %Ensure that there are 2 output arguments
             nargoutchk(2, 2);
@@ -278,7 +286,7 @@ classdef LabelRecogniser
 
             %Ensure that ROI is within bounds of the image
             expandedX = max(expandedX, 1);
-            expandedW = min(expandedW, obj.w - expandedX);
+            expandedW = min(expandedW, obj.width - expandedX);
 
             %Create expanded bounding boxes
             expandedROI = [expandedX, roiY, expandedW, roiH];
@@ -368,14 +376,16 @@ classdef LabelRecogniser
             expandedH = filteredTextROI(:, 4) + (2 * expansionValue);
             %Ensure that ROI is within bounds of the image
             expandedY = max(expandedY, 1);
-            expandedH = min(expandedH, obj.h - expandedH);
+            expandedH = min(expandedH, obj.height - expandedH);
 
             %Create expanded bounding boxes in appropriate format
             out = [filteredTextROI(:, 1), expandedY, filteredTextROI(:, 3), ... 
                 expandedH];
         end
         
-        function roi = orientationCorrection(obj, roi, letters)            
+        function roi = orientationCorrection(obj, roi, letters)
+            %orientationCorrection Ensure that each word has a horizontal orientation 
+            
             %Get the centre of the bounding boxes
             centreX = round(mean([letters(:, 1), letters(:, 1) + letters(:, 3)], 2));
             centreY = round(mean([letters(:, 2), letters(:, 2) + letters(:, 4)], 2));
@@ -404,6 +414,8 @@ classdef LabelRecogniser
         end
               
         function out = characterRecognition(obj, image, bboxes)
+            %characterRecognition Recognise characters within bounding boxes
+            
             %Pre-allocate vectors & initialise variables to hold number of bboxes, OCR
             %results and the sampling points for the line of best fit
             numBboxes = size(bboxes, 1);
@@ -443,6 +455,7 @@ classdef LabelRecogniser
         end
         
         function out = dateMatching(~, text)
+            %dateMatching Identfiy and isolate common date formats found within text
             
             regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)((?:\d{2}){0,2})';
             regexTextYear = '^(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)(?:\d{2}){1,2}';
