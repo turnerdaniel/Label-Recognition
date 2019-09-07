@@ -6,6 +6,11 @@ classdef LabelRecogniser
     %
     %   LabelRecogniser(image) initialises the class with an image. This 
     %   can be a file path to an image or a uint8 image matrix.
+    %
+    %   This class utilises the Image Processing Toolbox.
+    %
+    % Daniel Turner, 2019.
+    % --------------------------------------------------------------------
     
     properties 
         image; % Image matrix used for recognition
@@ -37,6 +42,7 @@ classdef LabelRecogniser
             %Ensure that there is atleast one output
             nargoutchk(1, 2);
             
+            %Perform steps to detect and recognise expiry dates from an image
             img = convertGrey(obj, obj.image);
             grey = preProcess(obj, img);
             img = mser(obj, grey);
@@ -48,22 +54,29 @@ classdef LabelRecogniser
             allText = characterRecognition(obj, img, bboxes);
             text = dateMatching(obj, allText);
             
+            %If there is more than 1 output argument
             if nargout > 1
+                %Overlay bounding boxes on image
                 bboxImage = insertShape(obj.image, 'Rectangle', bboxes, 'LineWidth', 3);
             end
         end
-        
+
         function obj = set.image(obj, value)
+            %Setter for image property
+            
+            %Perform different cases dependent on value's data type
             switch class(value)
-                case {'char', 'string'}
+                case {'char', 'string'} %filepath
                     try
+                        %Attempt to read image from filepath
                         obj.image = imread(value);
                     catch
                         error("LabelRecogniser:BadImageFile", "Cannot read image due to an invalid file type.");
                     end
                     obj = obj.updateImageDimensions();
                     
-                case 'uint8'
+                case 'uint8' %image matrix
+                    %Check that dimensions are sufficient to be an image
                     if ~isvector(value)
                         obj.image = value;
                         obj = obj.updateImageDimensions();
@@ -71,14 +84,14 @@ classdef LabelRecogniser
                         error("LabelRecogniser:BadImageDimensions", "Image dimensions are too small.");
                     end
                     
-                otherwise
+                otherwise %else
                     error("LabelRecogniser:BadImage", "Invalid data type. Must be a file location or uint8 array.");
             end
         end
     end
     methods (Access = private)
         function obj = updateImageDimensions(obj)
-            %updateImageDimensions Update the height an width properties according to the current image
+            %updateImageDimensions Update the height and width properties according to image dimensions
             
             [obj.height, obj.width, ~] = size(obj.image);
         end
