@@ -13,9 +13,9 @@ classdef LabelRecogniser
     % --------------------------------------------------------------------
     
     properties 
-        image; % Image matrix used for recognition
-        thresholdDelta = 0.3; % Delta used for MSER
-        strokeWidthVariationThreshold = 0.4; % Maximum difference in the width of each stroke in letters
+        image; % Input image matrix used for recognition
+        thresholdDelta = 0.3; % Step size between MSER intensity thresholds
+        strokeWidthVariationThreshold = 0.4; % Maximum difference in the width letters strokes
         samplingPoints = 10; % Number of points used for estimating the text orientation
     end
     properties (Access = private)
@@ -88,6 +88,28 @@ classdef LabelRecogniser
                     error("LabelRecogniser:BadImage", "Invalid data type. Must be a file location or uint8 array.");
             end
         end
+        function obj = set.thresholdDelta(obj, value)
+            %Setter for thresholdDelta property
+            
+            %Ensure that value falls within range supported by MSER
+            if value > 0 && value <= 100   
+                obj.thresholdDelta = value;
+            else
+                error('LabelRecogniser:ExceededRange', 'The chosen value exeeds the acceptable range of [0 100].');
+            end
+                
+            
+        end
+        function obj = set.strokeWidthVariationThreshold(obj, value)
+            %Setter for strokeWidthVariationThreshold property
+            
+            %Ensure that value falls within range of possible SWT values
+            if value > 0 && value <= 1
+                obj.strokeWidthVariationThreshold = value;
+            else
+                error('LabelRecogniser:ExceededRange', 'The chosen value exeeds the acceptable range of [0 1].');
+            end
+        end
     end
     methods (Access = private)
         function obj = updateImageDimensions(obj)
@@ -157,7 +179,6 @@ classdef LabelRecogniser
             adjusted = false(obj.height, obj.width);
             
             for i = 1:numObjects
-                %%%%%Just floor? bbox = floor(stats(i).BoundingBox);
                 %Get bounding box and image for current object
                 bbox = ceil(stats(i).BoundingBox - [0, 0, 1, 1]);
                 imageSegment = stats(i).Image;
@@ -501,5 +522,5 @@ end
 TODO:
 Maybe outputs should have actual names (not out?)
 Could maybe do regionprops on whole image then segement into regions
-Handle no dates found in dateMatching function (return -1/error?)
+Docs for properties and use them in code
 %} 
