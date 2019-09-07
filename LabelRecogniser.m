@@ -25,8 +25,17 @@ classdef LabelRecogniser
             obj.image = img;
         end
         
-        function recogniseDates(obj, show)
+        function [text, bboxImage] = recogniseDates(obj)
             %recogniseDates Identify the position and textual representation of the dates shown within the image.
+            %
+            %   text = recogniseDates() provides all of the recognised dates. 
+            %   Returns an empty string array if none are found.
+            %
+            %   [text, image] = recogniseDates() provides all of the recognised
+            %   dates and an image showing the bounding boxes of likely date regions.
+            
+            %Ensure that there is atleast one output
+            nargoutchk(1, 2);
             
             img = convertGrey(obj, obj.image);
             grey = preProcess(obj, img);
@@ -36,12 +45,11 @@ classdef LabelRecogniser
             img = geometricFilter(obj, img);
             img = strokeWidthTransform(obj, img);
             [img, bboxes] = textGrouping(obj, img);
-            txt = characterRecognition(obj, img, bboxes);
-            txt = dateMatching(obj, txt);
-            disp(txt);
+            allText = characterRecognition(obj, img, bboxes);
+            text = dateMatching(obj, allText);
             
-            if show == true
-                figure, imshow(img), title("img");
+            if nargout > 1
+                bboxImage = insertShape(obj.image, 'Rectangle', bboxes, 'LineWidth', 3);
             end
         end
         
