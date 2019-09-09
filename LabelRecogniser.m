@@ -125,17 +125,17 @@ classdef LabelRecogniser
             [obj.height, obj.width, ~] = size(obj.image);
         end
         
-        function out = convertGrey(~, image)
+        function gImage = convertGrey(~, image)
             %convertGrey Convert an RGB image to greyscale
             
             if size(image, 3) > 0
-                out = rgb2gray(image);
+                gImage = rgb2gray(image);
             else
-                out = image;
+                gImage = image;
             end
         end
         
-        function out = preProcess(~, image)
+        function pImage = preProcess(~, image)
             %preProcess Perform image enhancements to improve text clarity
             
             %Perform Spatial Filtering to eliminate noise
@@ -143,14 +143,14 @@ classdef LabelRecogniser
             %Perform Linear Contrast Stretching
             contrast = imadjust(noise);
             %Use Unsharp Masking to increase image sharpness
-            out = imsharpen(contrast);
+            pImage = imsharpen(contrast);
         end
         
-        function out = mser(obj, image)
+        function mserImage = mser(obj, image)
             %mser Detect text candiates using Maximally Stable Extremal Regions
             
             %Initialise logical image with necessary dimensions
-            out = false(obj.height, obj.width);
+            mserImage = false(obj.height, obj.width);
             
             %Could make parameters editable?
             mser = detectMSERFeatures(image, 'RegionAreaRange', [150 1500], ...
@@ -161,10 +161,10 @@ classdef LabelRecogniser
             %Convert img co-ordinates to linear image indexes
             ind = sub2ind([obj.height, obj.width], pixels(:,2), pixels(:,1));
             %Set matching pixels to white
-            out(ind) = true;
+            mserImage(ind) = true;
         end
         
-        function out = postProcess(~, image)
+        function pImage = postProcess(~, image)
             %postProcess Cleanup MSER binary image
             
             %Define 3x3 square structuring element
@@ -175,10 +175,10 @@ classdef LabelRecogniser
             %Remove blobs with an area less than 100 px
             clearNoise = bwareaopen(open, 100);
             %Fill small holes
-            out = ~bwareaopen(~clearNoise, 3);
+            pImage = ~bwareaopen(~clearNoise, 3);
         end
         
-        function out = connectedComponentEnhance(obj, image, greyscale)
+        function fImage = connectedComponentEnhance(obj, image, greyscale)
             %connectComponentEnhance Perform connected component enhancement to clean up binary MSER image
             
             stats = regionprops(image, 'Image', 'BoundingBox');
@@ -234,10 +234,10 @@ classdef LabelRecogniser
             %Remove blobs with an area below 100 pixels
             clearNoise = bwareaopen(adjusted, 20); 
             %Fill small holes by inverting image so the background becomes foreground
-            out = ~bwareaopen(~clearNoise, 3);
+            fImage = ~bwareaopen(~clearNoise, 3);
         end
         
-        function out = geometricFilter(~, image)
+        function fImage = geometricFilter(~, image)
             %geometricFilter Remove unlikely text candidates using geometric properties
             
             %Label the image and get the properties of each object
@@ -266,10 +266,10 @@ classdef LabelRecogniser
             keep = find(validEulerNo & validEccentricity & validExtent & ...
                 validSolidity & validAspectRatio);
             %Return pixels that are at the valid indexes for the image
-            out = ismember(label, keep);
+            fImage = ismember(label, keep);
         end
         
-        function out = strokeWidthTransform(obj, image)
+        function fImage = strokeWidthTransform(obj, image)
             %strokeWidthTransform Remove unlikley text candidates based upon the width of the characters
             
             %Label the image and get the smallet image encapsulating each object
@@ -307,10 +307,10 @@ classdef LabelRecogniser
             %Find the index of these objects
             keep = find(validStrokeWidths);
             %Create an image made of objects that are below the variation threshold
-            out = ismember(label, keep);
+            fImage = ismember(label, keep);
         end
         
-        function [image, out] = textGrouping(obj, image)
+        function [image, boxes] = textGrouping(obj, image)
             %textGrouping Establish bounding boxes around potential dates using a set of rules
             
             %Ensure that there are 2 output arguments
@@ -425,13 +425,14 @@ classdef LabelRecogniser
             expandedH = min(expandedH, obj.height - expandedH);
 
             %Create expanded bounding boxes in appropriate format
-            out = [filteredTextROI(:, 1), expandedY, filteredTextROI(:, 3), ... 
+            boxes = [filteredTextROI(:, 1), expandedY, filteredTextROI(:, 3), ... 
                 expandedH];
         end
         
         function roi = orientationCorrection(obj, roi, letters)
             %orientationCorrection Ensure that each word has a horizontal orientation 
             
+            %Number of points used to estimate orientation
             samplingPoints = 10;
             
             %Get the centre of the bounding boxes
@@ -461,13 +462,13 @@ classdef LabelRecogniser
             end
         end
               
-        function out = characterRecognition(obj, image, bboxes)
+        function text = characterRecognition(obj, image, bboxes)
             %characterRecognition Recognise characters within bounding boxes
             
             %Pre-allocate vectors & initialise variables to hold number of bboxes, OCR
             %results and the sampling points for the line of best fit
             numBboxes = size(bboxes, 1);
-            out = strings(numBboxes, 1);
+            text = strings(numBboxes, 1);
 
             %Loop through text lines
             for i = 1:numBboxes
@@ -498,11 +499,11 @@ classdef LabelRecogniser
                     '1234567890ABCDEFGHIJLMNOPRSTUVYabcdefghijlmnoprstuvy/.-:');
 
                 %Store the detected text
-                out(i) = ocrOutput.Text;
+                text(i) = ocrOutput.Text;
             end
         end
         
-        function out = dateMatching(~, text)
+        function dates = dateMatching(~, text)
             %dateMatching Identfiy and isolate common date formats found within text
             
             regexTextDate = '(\d{1,2})([\/\\\-\. ]|)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)([\/\\\-\. ]|)((?:\d{2}){0,2})';
@@ -519,14 +520,13 @@ classdef LabelRecogniser
             validNumeric = regexpi(text, regexNumeric, 'match');
 
             %concatenate matching text into single string array
-            out = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
+            dates = string(vertcat(validTextDate{:}, validTextYear{:}, validNumeric{:}));
         end
     end
 end
 
 %{ 
 TODO:
-Maybe outputs should have actual names (not out?)
+--Maybe outputs should have actual names (not out?)
 Could maybe do regionprops on whole image then segement into regions
-Docs for properties and use them in code
 %} 
