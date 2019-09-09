@@ -8,15 +8,12 @@ classdef LabelRecogniser
     %   can be a file path to an image or a uint8 image matrix.
     %
     %   This class utilises the Image Processing Toolbox.
-    %
-    % Daniel Turner, 2019.
-    % --------------------------------------------------------------------
     
     properties 
         image; % Input image matrix used for recognition
-        thresholdDelta = 0.3; % Step size between MSER intensity thresholds
-        strokeWidthVariationThreshold = 0.4; % Maximum difference in the width letters strokes
-        samplingPoints = 10; % Number of points used for estimating the text orientation
+        thresholdDelta = 0.3; % Step size between MSER intensity thresholds (default: 0.3)
+        strokeWidthVariationThreshold = 0.4; % Maximum difference in the width letters strokes (default: 0.4)
+        orientationThreshold = 7.5; % Angle that needs to be exceeded to perform orientation correction (default: 7.5)
     end
     properties (Access = private)
         height % height of input image
@@ -108,6 +105,16 @@ classdef LabelRecogniser
                 obj.strokeWidthVariationThreshold = value;
             else
                 error('LabelRecogniser:ExceededRange', 'The chosen value exeeds the acceptable range of [0 1].');
+            end
+        end
+        function obj = set.orientationThreshold(obj, value)
+            %Setter for orientationThreshold property
+            
+            %Ensure that value falls within range of possible angles
+            if value >= 0 && value <= 90
+                obj.orientationThreshold = value;
+            else
+                error('LabelRecogniser:ExceededRange', 'The chosen value exeeds the acceptable range of [0 90].');
             end
         end
     end
@@ -428,6 +435,8 @@ classdef LabelRecogniser
         function roi = orientationCorrection(obj, roi, letters)
             %orientationCorrection Ensure that each word has a horizontal orientation 
             
+            samplingPoints = 10;
+            
             %Get the centre of the bounding boxes
             centreX = round(mean([letters(:, 1), letters(:, 1) + letters(:, 3)], 2));
             centreY = round(mean([letters(:, 2), letters(:, 2) + letters(:, 4)], 2));
@@ -437,19 +446,19 @@ classdef LabelRecogniser
             
             %Create linearly spaced vector of 10 sample points from 1 to width of
             %the image
-            xPositions = linspace(1, size(roi, 2), obj.samplingPoints);
+            xPositions = linspace(1, size(roi, 2), samplingPoints);
             
             %Estimate the values of y at x values using the best fit coeffecient
             %to create a line of best fit
             yPositions = polyval(bestFit, xPositions);
             
             %Calculate the line of best fit's angle
-            orientation = atan2d(yPositions(obj.samplingPoints) - yPositions(1), ...
-                xPositions(obj.samplingPoints) - xPositions(1));
+            orientation = atan2d(yPositions(samplingPoints) - yPositions(1), ...
+                xPositions(samplingPoints) - xPositions(1));
             
             %Don't correct image if it is within 7.5 degrees of 0
             %OCR is capable of reading letters most accurately at ~< 10 degree offset
-            if (orientation > 7.5 || orientation < -7.5)
+            if (orientation > obj.orientationThreshold || orientation < -obj.orientationThreshold)
                 %Rotate the image by the angle using nearest negithbour interpolation
                 roi = imrotate(roi, orientation);
             end
