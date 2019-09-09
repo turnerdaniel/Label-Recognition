@@ -14,12 +14,12 @@ git clone https://github.com/turnerdaniel/Label-Recognition
 
 ## Usage
 
-Open the MATLAB IDE. Ensure that the directory containing ```script.m``` is selected as the current folder. 
+Open the MATLAB IDE. Ensure that the directory containing ```main.m``` is selected as the current folder. 
 
 Enter the following in the Command Window to execute the software:
 
 ```
-script
+main
 ```
 Import an image using the file selection window.
 
