@@ -11,7 +11,7 @@ classdef LabelRecogniser
     
     properties 
         image; % Input image matrix used for recognition
-        thresholdDelta = 0.3; % Step size between MSER intensity thresholds (default: 0.3)
+        thresholdDelta = 2.5; % Step size between MSER intensity thresholds (default: 2.5)
         strokeWidthVariationThreshold = 0.4; % Maximum difference in the width letters strokes (default: 0.4)
         orientationThreshold = 7.5; % Angle that needs to be exceeded to perform orientation correction (default: 7.5)
     end
@@ -154,7 +154,7 @@ classdef LabelRecogniser
             
             %Could make parameters editable?
             mser = detectMSERFeatures(image, 'RegionAreaRange', [150 1500], ...
-                'ThresholdDelta', 2.5, 'MaxAreaVariation', 0.2);
+                'ThresholdDelta', obj.thresholdDelta, 'MaxAreaVariation', 0.2);
             
             %Concatenate pixel coordinates from MSER as Nx2 matrix
             pixels = cell2mat(mser.PixelList);            
@@ -269,7 +269,7 @@ classdef LabelRecogniser
             out = ismember(label, keep);
         end
         
-        function out = strokeWidthTransform(~, image)
+        function out = strokeWidthTransform(obj, image)
             %strokeWidthTransform Remove unlikley text candidates based upon the width of the characters
             
             %Label the image and get the smallet image encapsulating each object
@@ -280,9 +280,6 @@ classdef LabelRecogniser
             %width variations
             numObjects = size(stats, 1);
             swVariations = zeros(1, numObjects);
-
-            %Define the maximum variation in stroke width for letters
-            swVariationThresh = 0.4;
 
             %Loop through all objects in image
             for i = 1:numObjects
@@ -306,7 +303,7 @@ classdef LabelRecogniser
             end
 
             %Find valid stroke widths that are below the variation threshold
-            validStrokeWidths = swVariations < swVariationThresh;
+            validStrokeWidths = swVariations < obj.strokeWidthVariationThreshold;
             %Find the index of these objects
             keep = find(validStrokeWidths);
             %Create an image made of objects that are below the variation threshold
