@@ -23,15 +23,15 @@ script
 ```
 Import an image using the file selection window.
 
-![Image Selection Window](assets/load.png "Image Selection Window")
+![Image Selection Window](https://user-images.githubusercontent.com/35703802/64533138-d220a800-d30a-11e9-9212-be1391bef9b5.png "Image Selection Window")
 
 View the detected dates. 
 
-![Date Detections](assets/detections.png "Date Detections")
+![Date Detections](https://user-images.githubusercontent.com/35703802/64533136-d220a800-d30a-11e9-9733-5dae826559a6.png "Date Detections")
 
 They can also be saved to a file.
 
-![Save Detections](assets/save.png "Save Detections")
+![Save Detections](https://user-images.githubusercontent.com/35703802/64533139-d220a800-d30a-11e9-848e-70718e706c77.png "Save Detections")
 
 ## Author
 
