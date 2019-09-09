@@ -36,3 +36,12 @@ They can also be saved to a file.
 ## Author
 
 Daniel Turner - [turnerdaniel](https://github.com/turnerdaniel/)
+
+## References
+
+##### Stroke Width Transform Algorithm:
+Li, Y. and Lu, H. (2012) Scene Text Detection via Stroke Width. In: 21st International Conference on Pattern Recognition (ICPR 2012), Tsukuba, Japan, 11-15 November. IEEE, 681–684. Available from https://ieeexplore.ieee.org/document/6460226 [accessed 10 February 2019].
+
+##### Candidate Text Grouping Algorithm:
+Mathworks (undated) Automatically Detect and Recognize Text in Natural Images. Available from https://uk.mathworks.com/help/vision/examples/automatically-detect-and-recognize-text-in-natural-images.html#d120e277 [accessed 10 February 2019].
+
