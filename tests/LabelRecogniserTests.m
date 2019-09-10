@@ -3,11 +3,12 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
     %   
     %   TODO: 
     %   Need a 500 image test function in seperate file
-    %   Cleanup samples not in path workaround if possible
     
     methods (TestClassSetup)
         function addLabelRecogniserToPath(testCase)
+            %Add LabelRecogniser & sample images to path
             p = addpath('..', '../samples');
+            %Restore path when finished
             testCase.addTeardown(@path, p);
         end
     end
@@ -39,16 +40,16 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
         end
         
         function testRecogniseDatesSuccess(testCase)
-            expDate = "25 MAR";
+            expDate = "09 Oct";
             
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('samples/good2.jpeg');
             date = lr.recogniseDates();
             testCase.assertEqual(date, expDate);
         end
         
         function testRecogniseDatesFailure(testCase)
             
-            lr = LabelRecogniser('samples/bad1.jpeg');
+            lr = LabelRecogniser('samples/invalid.jpeg');
             date = lr.recogniseDates();
             testCase.assertEmpty(date);
         end
