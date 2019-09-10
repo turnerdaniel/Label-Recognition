@@ -14,8 +14,7 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
     end
     
     methods (Test)
-        %setup and teardown of path so can be in own folder
-        
+
         function testConstructorAsPath(testCase)
             I = imread('samples/good1.jpeg');
             lr = LabelRecogniser('samples/good1.jpeg');
@@ -28,6 +27,12 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
             testCase.assertEqual(lr.image, I);
         end
         
+        function testConstructorInvalidImage(testCase)
+            %Use anonymous function handle to create object
+            testCase.assertError(@()LabelRecogniser('notanimage.jpeg'), ...
+                'LabelRecogniser:BadImageFile');
+        end
+        
         function testConstructorValues(testCase)
             expTd = 2.5;
             expSwvt = 0.4;
@@ -37,6 +42,60 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
             testCase.assertEqual(lr.thresholdDelta, expTd);
             testCase.assertEqual(lr.strokeWidthVariationThreshold, expSwvt);
             testCase.assertEqual(lr.orientationThreshold, expOt);            
+        end
+        
+        function testChangeThresholdDeltaSuccess(testCase)
+            expTd = 5;
+            
+            lr = LabelRecogniser('samples/good1.jpeg');
+            lr.thresholdDelta = expTd;
+            testCase.assertEqual(lr.thresholdDelta, expTd);
+        end
+        
+        function testChangeThresholdDeltaFailure(testCase)
+            lr = LabelRecogniser('samples/good1.jpeg');
+            testCase.assertError(@setThresholdDelta, ... 
+                'LabelRecogniser:ExceededRange');
+            
+            function setThresholdDelta()
+                lr.thresholdDelta = 250;
+            end
+        end
+        
+        function testChangeStrokeWidthVariationThresholdSuccess(testCase)
+            expSwvt = 0.5;
+            
+            lr = LabelRecogniser('samples/good1.jpeg');
+            lr.strokeWidthVariationThreshold = expSwvt;
+            testCase.assertEqual(lr.strokeWidthVariationThreshold, expSwvt);
+        end
+        
+        function testChangeStrokeWidthVariationThresholdFailure(testCase)
+            lr = LabelRecogniser('samples/good1.jpeg');
+            testCase.assertError(@setStrokeWidthVariationThreshold, ... 
+                'LabelRecogniser:ExceededRange');
+            
+            function setStrokeWidthVariationThreshold()
+                lr.strokeWidthVariationThreshold = 2;
+            end
+        end
+        
+        function testChangeOrientationThresholdSuccess(testCase)
+            expOt = 15;
+            
+            lr = LabelRecogniser('samples/good1.jpeg');
+            lr.orientationThreshold = expOt;
+            testCase.assertEqual(lr.orientationThreshold, expOt);
+        end
+        
+        function testChangeOrientationThresholdFailure(testCase)
+            lr = LabelRecogniser('samples/good1.jpeg');
+            testCase.assertError(@setOrientationThreshold, ... 
+                'LabelRecogniser:ExceededRange');
+            
+            function setOrientationThreshold()
+                lr.orientationThreshold = 180;
+            end
         end
         
         function testRecogniseDatesSuccess(testCase)
