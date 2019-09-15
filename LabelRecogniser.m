@@ -27,17 +27,14 @@ classdef LabelRecogniser
             obj.image = img;
         end
         
-        function [text, bboxImage] = recogniseDates(obj)
+        function [text, bboxes] = recogniseDates(obj)
             %recogniseDates Identify the position and textual representation of the dates shown within the image.
             %
             %   text = recogniseDates() provides all of the recognised dates. 
             %   Returns an empty string array if none are found.
             %
-            %   [text, image] = recogniseDates() provides all of the recognised
-            %   dates and an image showing the bounding boxes of likely date regions.
-            
-            %Ensure that there is atleast one output
-            nargoutchk(1, 2);
+            %   [text, bboxes] = recogniseDates() provides all of the recognised
+            %   dates and the bounding boxes of identified date regions.
             
             %Perform steps to detect and recognise expiry dates from an image
             img = convertGrey(obj, obj.image);
@@ -50,12 +47,6 @@ classdef LabelRecogniser
             [img, bboxes] = textGrouping(obj, img);
             allText = characterRecognition(obj, img, bboxes);
             text = dateMatching(obj, allText);
-            
-            %If there is more than 1 output argument
-            if nargout > 1
-                %Overlay bounding boxes on image
-                bboxImage = insertShape(obj.image, 'Rectangle', bboxes, 'LineWidth', 3);
-            end
         end
 
         function obj = set.image(obj, value)
@@ -527,6 +518,5 @@ end
 
 %{ 
 TODO:
---Maybe outputs should have actual names (not out?)
 Could maybe do regionprops on whole image then segement into regions
 %} 
