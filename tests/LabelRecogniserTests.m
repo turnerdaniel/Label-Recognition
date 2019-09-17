@@ -106,8 +106,16 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
             testCase.assertEqual(date, expDate);
         end
         
-        function testRecogniseDatesFailure(testCase)
+        function testRecogniseDatesSuccessWithBboxOutput(testCase)
+            expDate = "01 JAN 2020";
             
+            lr = LabelRecogniser('images/valid.jpeg');
+            [date, bbox] = lr.recogniseDates();
+            testCase.assertEqual(date, expDate);
+            testCase.assertNotEmpty(bbox);
+        end
+        
+        function testRecogniseDatesFailure(testCase)
             lr = LabelRecogniser('images/invalid.jpeg');
             date = lr.recogniseDates();
             testCase.assertEmpty(date);
