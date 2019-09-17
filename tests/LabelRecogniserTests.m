@@ -7,7 +7,7 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
     methods (TestClassSetup)
         function addLabelRecogniserToPath(testCase)
             %Add LabelRecogniser & sample images to path
-            p = addpath('..', '../samples');
+            p = addpath('..');
             %Restore path when finished
             testCase.addTeardown(@path, p);
         end
@@ -16,13 +16,13 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
     methods (Test)
 
         function testConstructorAsPath(testCase)
-            I = imread('samples/good1.jpeg');
-            lr = LabelRecogniser('samples/good1.jpeg');
+            I = imread('images/valid.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             testCase.assertEqual(lr.image, I);
         end
         
         function testConstructorAsImage(testCase)
-            I = imread('samples/good1.jpeg');
+            I = imread('images/valid.jpeg');
             lr = LabelRecogniser(I);
             testCase.assertEqual(lr.image, I);
         end
@@ -38,7 +38,7 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
             expSwvt = 0.4;
             expOt = 7.5;
             
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             testCase.assertEqual(lr.thresholdDelta, expTd);
             testCase.assertEqual(lr.strokeWidthVariationThreshold, expSwvt);
             testCase.assertEqual(lr.orientationThreshold, expOt);            
@@ -47,13 +47,13 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
         function testChangeThresholdDeltaSuccess(testCase)
             expTd = 5;
             
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             lr.thresholdDelta = expTd;
             testCase.assertEqual(lr.thresholdDelta, expTd);
         end
         
         function testChangeThresholdDeltaFailure(testCase)
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             testCase.assertError(@setThresholdDelta, ... 
                 'LabelRecogniser:ExceededRange');
             
@@ -65,13 +65,13 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
         function testChangeStrokeWidthVariationThresholdSuccess(testCase)
             expSwvt = 0.5;
             
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             lr.strokeWidthVariationThreshold = expSwvt;
             testCase.assertEqual(lr.strokeWidthVariationThreshold, expSwvt);
         end
         
         function testChangeStrokeWidthVariationThresholdFailure(testCase)
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             testCase.assertError(@setStrokeWidthVariationThreshold, ... 
                 'LabelRecogniser:ExceededRange');
             
@@ -83,13 +83,13 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
         function testChangeOrientationThresholdSuccess(testCase)
             expOt = 15;
             
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             lr.orientationThreshold = expOt;
             testCase.assertEqual(lr.orientationThreshold, expOt);
         end
         
         function testChangeOrientationThresholdFailure(testCase)
-            lr = LabelRecogniser('samples/good1.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             testCase.assertError(@setOrientationThreshold, ... 
                 'LabelRecogniser:ExceededRange');
             
@@ -99,16 +99,16 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
         end
         
         function testRecogniseDatesSuccess(testCase)
-            expDate = "09 Oct";
+            expDate = "01 JAN 2020";
             
-            lr = LabelRecogniser('samples/good2.jpeg');
+            lr = LabelRecogniser('images/valid.jpeg');
             date = lr.recogniseDates();
             testCase.assertEqual(date, expDate);
         end
         
         function testRecogniseDatesFailure(testCase)
             
-            lr = LabelRecogniser('samples/invalid.jpeg');
+            lr = LabelRecogniser('images/invalid.jpeg');
             date = lr.recogniseDates();
             testCase.assertEmpty(date);
         end
