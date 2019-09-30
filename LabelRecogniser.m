@@ -382,9 +382,13 @@ classdef LabelRecogniser
             %Create merged bounding boxes in [X Y H W] format
             mergedTextROI = [x1, y1, x2 - x1, y2 - y1];
             
-            %Calculate size of labels after updating connected bounding boxes
-            labelSizes = histcounts(labelledROI.', max(labelledROI), ...
-                'BinMethod', 'integers');
+            %Calculate size of labels after updating connected bounding boxes            
+            maxLabel = max(labelledROI);
+            labelSizes = histcounts(labelledROI.', maxLabel, ...
+                'BinMethod', 'integers', 'BinLimits', [0.5, maxLabel + 0.5]);
+            
+%             labelSizes = histcounts(labelledROI.', max(labelledROI), ...
+%                 'BinMethod', 'integers');
 
             %Remove single, unconnected bounding boxes
             wordCandidates = labelSizes > 1;
