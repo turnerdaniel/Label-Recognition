@@ -8,15 +8,15 @@ classdef LabelRecogniserVerification
     % Only do dates once then remove all that there is no recall == 1 for?
     
     properties
-        Precision %
-        Recall %
-        RecognitionAccuracy %
-        OverallAccuracy %
-        MinDuration %
-        MaxDuration %
-        MeanDuration %
-        StdDevDuration %
-        StdErrorDuration %
+        Precision % How relevant the bounding boxes were [0 1]
+        Recall % How many relevant bounding boxes were returned [0 1]
+        RecognitionAccuracy % How many dates were recognised correctly from successful detections [0 1]
+        OverallAccuracy % How many dates were correctly recognised out of the dataset [0 1]
+        MinDuration % The quickest time that recogniseDates() was completed on the dataset
+        MaxDuration % The slowest time that recogniseDates() was completed on the dataset
+        MeanDuration % The average time that recogniseDates() took to complete
+        StdDevDuration % The variation in completion times of recogniseDates() across the dataset
+        StdErrorDuration % How well MeanDuration represents the completion times of recogniseDates() outside of the dataset (population) 
     end
     
     properties (Access = private)
