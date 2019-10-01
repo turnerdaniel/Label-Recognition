@@ -5,7 +5,7 @@ classdef LabelRecogniserVerification
     %   date detection and recognition accuracy.
     
     %TODO: 
-    % maybe result class?
+    % Only do dates once then remove all that there is no recall == 1 for?
     
     properties
         Precision %
@@ -21,9 +21,11 @@ classdef LabelRecogniserVerification
     
     properties (Access = private)
         groundTruth %
-        precisions
-        recalls
-        times
+        precisions %
+        recalls %
+        recognisedMatches %
+        overallMatches %
+        durations %
         noImages %
     end
     
@@ -34,9 +36,9 @@ classdef LabelRecogniserVerification
             obj.noImages = size(obj.groundTruth, 1);
             obj.precisions = zeros(obj.noImages, 1);
             obj.recalls = zeros(obj.noImages, 1);
-            obj.times = zeros(obj.noImages, 1);
+            obj.durations = zeros(obj.noImages, 1);
             
-            obj.getMetrics();
+            obj = obj.getMetrics();
         end
         
         function obj = set.groundTruth(obj, value)
@@ -96,15 +98,71 @@ classdef LabelRecogniserVerification
     end
     
     methods (Access = private)
-        function result = getMetrics(obj)
+        function obj = getMetrics(obj)
+            %Add LabelRecogniser to path
+            addpath('..');
+            %Remove LabelRecogniser from path when destroyed (Anon function)
+            cleanupObj = onCleanup(@() rmpath('..'));
             
+            matches = false(obj.noImages, 1);
             for i = 1:obj.noImages
-                %lr = LabelRecogniser(obj.groundTruth.Source{i});
-                %[text, bbox, ...] = lr.recogniseDates();
+            %for i = 1:100
+                lr = LabelRecogniser(obj.groundTruth.Source{i});
+                
+                tic;
+                [dates, bbox] = lr.recogniseDates();
+                obj.durations(i) = toc;
+                
+                [obj.precisions(i), obj.recalls(i)] = ...
+                    bboxPrecisionRecall(bbox, obj.groundTruth.Position{i});
+                
+                % --------------------------------------------------------
+                %TODO:
+                    %Handle multiple dates (image84.jpeg)
+                    %Check that recogAccuracy works
+                    %Use image set instea of redefining lr
+                    
+                if isempty(dates)
+                    continue
+                else
+                    nsKnownDate = strrep(obj.groundTruth.Date{i}, ' ', '');
+                    
+                    for j = 1:size(dates, 1)
+                        nsDate = strrep(dates(j), ' ', '');
+                        
+                        if matches(i) == false
+                            matches(i) = strcmpi(nsDate, nsKnownDate);
+                        else
+                            break
+                        end
+                    end
+                end
             end
             
-            result = obj.groundTruth;
+            %Calculations
+            obj.Precision = mean(obj.precisions);
+            obj.Recall = mean(obj.recalls);
+            
+            %------------------------------------
+            
+            %image 318 has large bounding box which isn't classed as
+            %correct - still recognises image date:
+            %   Should discount all recognitions with incorrect bbox?
+            %   eg. detections = obj.recalls == 1;
+            %       sum(matches(detections))...
+            
+            obj.RecognitionAccuracy = sum(matches) / sum(obj.recalls == 1);
+            obj.OverallAccuracy = sum(matches) / obj.noImages;
+            
+            %------------------------------------
+            
+            obj.MeanDuration = mean(obj.durations);
+            obj.MinDuration = min(obj.durations);
+            obj.MaxDuration = max(obj.durations);
+            obj.StdDevDuration = std(obj.durations);
+            obj.StdErrorDuration = obj.StdDevDuration / sqrt(obj.noImages);          
         end
+        
     end
 end
 
