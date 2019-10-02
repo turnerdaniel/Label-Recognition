@@ -4,8 +4,12 @@ classdef LabelRecogniserVerification
     %   Collect metrics from LabelRecogniser.recogniseDates() that measure
     %   date detection and recognition accuracy.
     
-    %TODO: 
-    % Only do dates once then remove all that there is no recall == 1 for?
+    %TODO:
+    %   Mention not detected but recognised...
+    %   It is possible for dates to be incorrectly detected but recognise
+    %   at the end ue to threshold necessary for a bounding box to be
+    %   considered accurate.
+    
     
     properties
         Precision % How relevant the bounding boxes were [0 1]
@@ -23,8 +27,7 @@ classdef LabelRecogniserVerification
         groundTruth %
         precisions %
         recalls %
-        recognisedMatches %
-        overallMatches %
+        matches %
         durations %
         noImages %
     end
@@ -36,6 +39,7 @@ classdef LabelRecogniserVerification
             obj.noImages = size(obj.groundTruth, 1);
             obj.precisions = zeros(obj.noImages, 1);
             obj.recalls = zeros(obj.noImages, 1);
+            obj.matches = false(obj.noImages, 1);
             obj.durations = zeros(obj.noImages, 1);
             
             obj = obj.getMetrics();
@@ -104,9 +108,7 @@ classdef LabelRecogniserVerification
             %Remove LabelRecogniser from path when destroyed (Anon function)
             cleanupObj = onCleanup(@() rmpath('..'));
             
-            matches = false(obj.noImages, 1);
             for i = 1:obj.noImages
-            %for i = 1:100
                 lr = LabelRecogniser(obj.groundTruth.Source{i});
                 
                 tic;
@@ -118,9 +120,7 @@ classdef LabelRecogniserVerification
                 
                 % --------------------------------------------------------
                 %TODO:
-                    %Handle multiple dates (image84.jpeg)
-                    %Check that recogAccuracy works
-                    %Use image set instea of redefining lr
+                    %Use image set instead of redefining lr
                     
                 if isempty(dates)
                     continue
@@ -130,8 +130,8 @@ classdef LabelRecogniserVerification
                     for j = 1:size(dates, 1)
                         nsDate = strrep(dates(j), ' ', '');
                         
-                        if matches(i) == false
-                            matches(i) = strcmpi(nsDate, nsKnownDate);
+                        if obj.matches(i) == false
+                            obj.matches(i) = strcmpi(nsDate, nsKnownDate);
                         else
                             break
                         end
@@ -143,18 +143,9 @@ classdef LabelRecogniserVerification
             obj.Precision = mean(obj.precisions);
             obj.Recall = mean(obj.recalls);
             
-            %------------------------------------
-            
-            %image 318 has large bounding box which isn't classed as
-            %correct - still recognises image date:
-            %   Should discount all recognitions with incorrect bbox?
-            %   eg. detections = obj.recalls == 1;
-            %       sum(matches(detections))...
-            
-            obj.RecognitionAccuracy = sum(matches) / sum(obj.recalls == 1);
-            obj.OverallAccuracy = sum(matches) / obj.noImages;
-            
-            %------------------------------------
+            detected = (obj.recalls == 1);
+            obj.RecognitionAccuracy = sum(obj.matches(detected)) / sum(detected);
+            obj.OverallAccuracy = sum(obj.matches) / obj.noImages;
             
             obj.MeanDuration = mean(obj.durations);
             obj.MinDuration = min(obj.durations);
