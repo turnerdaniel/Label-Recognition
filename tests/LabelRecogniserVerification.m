@@ -1,15 +1,20 @@
 classdef LabelRecogniserVerification
-    %LabelRecogniserVerification Verify the accuracy of LabelRecogniser algorithm
+    %LabelRecogniserVerification Verify the performance of LabelRecogniser
+    %algorithm.
     %   
     %   Collect metrics from LabelRecogniser.recogniseDates() that measure
-    %   date detection and recognition accuracy.
-    
-    %TODO:
-    %   Mention not detected but recognised...
-    %   It is possible for dates to be incorrectly detected but recognise
-    %   at the end ue to threshold necessary for a bounding box to be
-    %   considered accurate.
-    
+    %   date detection and recognition accuracy. These include:
+    %
+    %       Precision, Recall, Recognition Acuracy, Overall Accuracy, 
+    %       Minimum Duration, Max Duration, Mean Duration, Standard
+    %       Deviation Duration and Standard Error of the Mean Duration.
+    %
+    %   LabelRecogniserVerification verifies the performance of the
+    %   LabelReocgniser algorithm on the entire dataset (500 images).
+    %
+    %   LabelRecogniserVerification(N) verifies the performance of the
+    %   LabelRecogniser algorithm on N randomly-selected images from the
+    %   dataset.
     
     properties
         Precision % How relevant the bounding boxes were [0 1]
@@ -24,24 +29,27 @@ classdef LabelRecogniserVerification
     end
     
     properties (Access = private)
-        groundTruth %
-        precisions %
-        recalls %
-        matches %
-        durations %
-        noImages %
+        groundTruth % Table holding bounding box position and dates for the dataset
+        precisions % Vector of precision values
+        recalls % Vector of recall values
+        matches % Vector of matching detected and ground truth values
+        durations % Vector of algorithm durations
+        noImages % Number of image in dataset
     end
     
     methods
         function obj = LabelRecogniserVerification()
+            %Load ground truth data 
             obj.groundTruth = load('labels/groundTruth.mat');
             
+            %Pre-allocate vectors
             obj.noImages = size(obj.groundTruth, 1);
             obj.precisions = zeros(obj.noImages, 1);
             obj.recalls = zeros(obj.noImages, 1);
             obj.matches = false(obj.noImages, 1);
             obj.durations = zeros(obj.noImages, 1);
             
+            %Generate metrics
             obj = obj.getMetrics();
         end
         
@@ -109,40 +117,47 @@ classdef LabelRecogniserVerification
             cleanupObj = onCleanup(@() rmpath('..'));
             
             for i = 1:obj.noImages
+                %Initialise LabelRecogniser with dataset image
                 lr = LabelRecogniser(obj.groundTruth.Source{i});
                 
+                %Measure execution time and perform recognition
                 tic;
                 [dates, bbox] = lr.recogniseDates();
                 obj.durations(i) = toc;
                 
+                %Calculate precision and recall from bounding boxes
                 [obj.precisions(i), obj.recalls(i)] = ...
                     bboxPrecisionRecall(bbox, obj.groundTruth.Position{i});
                 
-                % --------------------------------------------------------
-                %TODO:
-                    %Use image set instead of redefining lr
-                    
+                %Check that a date was a recognised
                 if isempty(dates)
+                    %skip iteration
                     continue
                 else
+                    %Remove spaces
                     nsKnownDate = strrep(obj.groundTruth.Date{i}, ' ', '');
-                    
+                    %Loop through 1 or more recognised dates
                     for j = 1:size(dates, 1)
+                        %Remove spaces
                         nsDate = strrep(dates(j), ' ', '');
-                        
+                        %Check that a match has not already been found
                         if obj.matches(i) == false
+                            %Case-insensitive comparison of date and ground truth match
                             obj.matches(i) = strcmpi(nsDate, nsKnownDate);
                         else
+                            %Exit loop as match already found
                             break
                         end
                     end
                 end
             end
             
-            %Calculations
+            %Calculate metrics from vectors and assign to properties
             obj.Precision = mean(obj.precisions);
             obj.Recall = mean(obj.recalls);
             
+            %Create logical index of all detected dates to remove failed
+            %detections from recognition accuracy calculation
             detected = (obj.recalls == 1);
             obj.RecognitionAccuracy = sum(obj.matches(detected)) / sum(detected);
             obj.OverallAccuracy = sum(obj.matches) / obj.noImages;
@@ -153,7 +168,5 @@ classdef LabelRecogniserVerification
             obj.StdDevDuration = std(obj.durations);
             obj.StdErrorDuration = obj.StdDevDuration / sqrt(obj.noImages);          
         end
-        
     end
 end
-
