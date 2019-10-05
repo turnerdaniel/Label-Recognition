@@ -1,8 +1,8 @@
 classdef LabelRecogniserTests < matlab.unittest.TestCase
     %LabelRecogniserTests Test class for LabelRecogniser that verifies intended functionality.
     %   
-    %   TODO: 
-    %   Need a 500 image test function in seperate file
+    %   run(LabelRecogniserTests) executes the unit tests and displays the
+    %   results.
     
     methods (TestClassSetup)
         function addLabelRecogniserToPath(testCase)

@@ -39,6 +39,8 @@ classdef LabelRecogniserVerification
     
     methods
         function obj = LabelRecogniserVerification()
+            %LabelRecogniserVerification Construct and run verification of the algorithm on the dataset
+            
             %Load ground truth data 
             obj.groundTruth = load('labels/groundTruth.mat');
             
