@@ -1,17 +1,17 @@
 # Label Recognition Tests
 
-This test module is provided as part of the `LabelRecogniser` class and is designed to evaluate its performance in a variety of different scenarios.
+This test module is provided as part of the `LabelRecogniser` class and is designed to evaluate its performance in a variety of scenarios.
 
 ## Installation
 
-No installation necessary. The test module imports `LabelRecogniser` from the parent class when executed.
+No installation necessary. The test module imports `LabelRecogniser` from the parent class when required.
 
 ## Usage
 
 The test module provides 2 test classes: 
 
 * `LabelRecogniserTests` uses MATLAB's unit test framework to validate the software's functionality.
-* `LabelRecogniserVerfication` assesses the performance of the software on the dataset.
+* `LabelRecogniserVerification` assesses the performance of the software on the dataset.
 
 ### LabelRecogniserTests
 
@@ -26,6 +26,7 @@ The test module provides 2 test classes:
     .............
     Done LabelRecogniserTests
     ```
+
 3. Review results:
     ```MATLAB
     Totals:
@@ -34,14 +35,14 @@ The test module provides 2 test classes:
     ```
 
 ### LabelRecogniserVerification
-__WARNING:__ This test take can take upwards of 10 minutes to complete on slow systems.
+**WARNING:** This test take can take upwards of 10 minutes to complete on a slow system.
 
 1. Run the tests by executing
     ```MATLAB
     LabelRecogniserVerification
     ````
 
-2. Wait for `LabelRecogniser.recogniseDates()` to be ran on the 500 images in the dataset.
+2. Wait for `LabelRecogniser.recogniseDates()` to complete for all 500 images in the dataset.
 
 3. Review the metrics:
     ```MATLAB
@@ -68,15 +69,15 @@ doc LabelRecogniserVerification
 
 The Recognition Accuracy results from `LabelRecogniserVerification` can sometimes be unreliable due to the difficulty in discerning what classes as a 'detection'.
 
-Officially, it is when the Intersection over Union (IoU) of a predicted and the ground truth bounding box exceeds 0.5. 
+Officially, it is when the Intersection over Union (IoU) of the predicted and ground truth bounding boxes exceeds 0.5. 
 
-However, sometimes a date can recognised from bounding box which has not been classed as detected. e.g. The predicted bounding box is too big therefore the IoU does not exceed 0.5.
+However, sometimes a date can recognised from bounding box which has not been classed as detected. e.g. The predicted bounding box is too big, therefore the IoU does not exceed 0.5.
 
 ## Dataset
 
-The dataset consists of a sample of 500 images that were pseudo-randomly selected from a collection of 9,651 images that represent the population.
+The dataset contains a sample of 500 images that were pseudo-randomly selected from a collection of 9,651 images representing the population.
 
-These images consisted of photos taken of food packaging in a natural environment that had variances in illumination, scale, orientation, font and perspective.
+These images consist of photos taken of food packaging in a natural environment that have variances in illumination, scale, orientation, font and perspective.
 
 Images are labelled numerically within the dataset directory.
 
