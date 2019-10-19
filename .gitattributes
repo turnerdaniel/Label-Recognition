@@ -5,6 +5,7 @@
 *.p binary
 *.slx binary
 *.mdl binary
+*.mlapp binary
 
 # Don't attempt to auto line feed, diff or merge image files
 *.jpg binary
