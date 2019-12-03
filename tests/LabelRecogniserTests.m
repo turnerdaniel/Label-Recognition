@@ -14,6 +14,11 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
     end
     
     methods (Test)
+        
+        function testNoConstructor(testCase)
+            lr = LabelRecogniser();
+            testCase.assertEqual(lr.image, []);
+        end
 
         function testConstructorAsPath(testCase)
             I = imread('images/valid.jpeg');
@@ -119,6 +124,12 @@ classdef LabelRecogniserTests < matlab.unittest.TestCase
             lr = LabelRecogniser('images/invalid.jpeg');
             date = lr.recogniseDates();
             testCase.assertEmpty(date);
+        end
+        
+        function testRecogniseDatesFailureNoImage(testCase)
+            lr = LabelRecogniser();
+            testCase.assertError(@()lr.recogniseDates(), ... 
+                'LabelRecogniser:NoImage');
         end
     end
 end

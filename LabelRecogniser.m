@@ -23,8 +23,9 @@ classdef LabelRecogniser
     methods
         function obj = LabelRecogniser(img)
             %LabelRecogniser Construct an instance of this class from a filepath or uint8 image matrix.
-            
-            obj.image = img;
+            if nargin > 0
+                obj.image = img;
+            end
         end
         
         function [text, bboxes] = recogniseDates(obj)
@@ -35,6 +36,11 @@ classdef LabelRecogniser
             %
             %   [text, bboxes] = recogniseDates() provides all of the recognised
             %   dates and the bounding boxes of identified date regions.
+            
+            %Check that there is a valid image
+            if isempty(obj.image)
+                error("LabelRecogniser:NoImage", "No image was provided for recognition.");
+            end
             
             %Perform steps to detect and recognise expiry dates from an image
             img = convertGrey(obj, obj.image);
