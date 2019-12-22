@@ -125,7 +125,7 @@ classdef LabelRecogniser
         function gImage = convertGrey(~, image)
             %convertGrey Convert an RGB image to greyscale
             
-            if size(image, 3) > 0
+            if size(image, 3) == 3
                 gImage = rgb2gray(image);
             else
                 gImage = image;
