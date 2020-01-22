@@ -149,12 +149,21 @@ classdef LabelRecogniser
             %Initialise logical image with necessary dimensions
             mserImage = false(obj.height, obj.width);
             
-            %Could make parameters editable?
+            %Perform MSER text detection
             mser = detectMSERFeatures(image, 'RegionAreaRange', [150 1500], ...
                 'ThresholdDelta', obj.thresholdDelta, 'MaxAreaVariation', 0.2);
             
-            %Concatenate pixel coordinates from MSER as Nx2 matrix
-            pixels = cell2mat(mser.PixelList);            
+            % Ensure that text has been found with provided MSER parameters
+            if mser.Count > 1
+                % Concatenate pixel coordinates from cell to Nx2 matrix
+                pixels = cell2mat(mser.PixelList);
+            elseif mser.Count == 1
+                % Handle PixelList in matrix form
+                pixels = mser.PixelList;
+            else
+                error('LabelRecogniser:InvalidMSERParams', 'No text detected by MSER. Ensure parameters are suitable.');
+            end
+
             %Convert img co-ordinates to linear image indexes
             ind = sub2ind([obj.height, obj.width], pixels(:,2), pixels(:,1));
             %Set matching pixels to white
@@ -316,6 +325,10 @@ classdef LabelRecogniser
             %Get the bounding box for each object and convert to usable coordinates
             stats = regionprops(image, 'BoundingBox');
             ROIs = vertcat(stats.BoundingBox);
+            
+            if isempty(ROIs)
+                error('LabelRecogniser:NoBoundingBoxes', 'Bounding Boxes could not be created since no text was detected. Try relaxing the filtering parameters.');
+            end
 
             %Seperate bounding box into seperate variables for manipulation
             roiX = ROIs(:, 1);
