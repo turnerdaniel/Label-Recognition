@@ -7,7 +7,8 @@ classdef LabelRecogniser
     %   LabelRecogniser(image) initialises the class with an image. This 
     %   can be a file path to an image or a uint8 image matrix.
     %
-    %   This class utilises the Image Processing Toolbox.
+    %   This class utilises the Image Processing and Computer Vision 
+    %   Toolboxes.
     
     properties 
         image; % Input image matrix used for recognition
