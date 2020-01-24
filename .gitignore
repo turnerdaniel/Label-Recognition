@@ -3,7 +3,11 @@
 .autosave
 *.mex
 
-#macOS Files
+# MATLAB Project Files
+*.prj
+Label Recognition_resources/
+
+# macOS Files
 .DS_Store
 .Trashes
 .fseventsd
