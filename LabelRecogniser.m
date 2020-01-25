@@ -7,7 +7,8 @@ classdef LabelRecogniser
     %   LabelRecogniser(image) initialises the class with an image. This 
     %   can be a file path to an image or a uint8 image matrix.
     %
-    %   This class utilises the Image Processing Toolbox.
+    %   This class utilises the Image Processing and Computer Vision 
+    %   Toolboxes.
     
     properties 
         image; % Input image matrix used for recognition
@@ -23,8 +24,9 @@ classdef LabelRecogniser
     methods
         function obj = LabelRecogniser(img)
             %LabelRecogniser Construct an instance of this class from a filepath or uint8 image matrix.
-            
-            obj.image = img;
+            if nargin > 0
+                obj.image = img;
+            end
         end
         
         function [text, bboxes] = recogniseDates(obj)
@@ -35,6 +37,11 @@ classdef LabelRecogniser
             %
             %   [text, bboxes] = recogniseDates() provides all of the recognised
             %   dates and the bounding boxes of identified date regions.
+            
+            %Check that there is a valid image
+            if isempty(obj.image)
+                error("LabelRecogniser:NoImage", "No image was provided for recognition.");
+            end
             
             %Perform steps to detect and recognise expiry dates from an image
             img = convertGrey(obj, obj.image);
@@ -119,7 +126,7 @@ classdef LabelRecogniser
         function gImage = convertGrey(~, image)
             %convertGrey Convert an RGB image to greyscale
             
-            if size(image, 3) > 0
+            if size(image, 3) == 3
                 gImage = rgb2gray(image);
             else
                 gImage = image;
@@ -143,12 +150,21 @@ classdef LabelRecogniser
             %Initialise logical image with necessary dimensions
             mserImage = false(obj.height, obj.width);
             
-            %Could make parameters editable?
+            %Perform MSER text detection
             mser = detectMSERFeatures(image, 'RegionAreaRange', [150 1500], ...
                 'ThresholdDelta', obj.thresholdDelta, 'MaxAreaVariation', 0.2);
             
-            %Concatenate pixel coordinates from MSER as Nx2 matrix
-            pixels = cell2mat(mser.PixelList);            
+            % Ensure that text has been found with provided MSER parameters
+            if mser.Count > 1
+                % Concatenate pixel coordinates from cell to Nx2 matrix
+                pixels = cell2mat(mser.PixelList);
+            elseif mser.Count == 1
+                % Handle PixelList in matrix form
+                pixels = mser.PixelList;
+            else
+                error('LabelRecogniser:InvalidMSERParams', 'No text detected by MSER. Ensure parameters are suitable.');
+            end
+
             %Convert img co-ordinates to linear image indexes
             ind = sub2ind([obj.height, obj.width], pixels(:,2), pixels(:,1));
             %Set matching pixels to white
@@ -310,6 +326,10 @@ classdef LabelRecogniser
             %Get the bounding box for each object and convert to usable coordinates
             stats = regionprops(image, 'BoundingBox');
             ROIs = vertcat(stats.BoundingBox);
+            
+            if isempty(ROIs)
+                error('LabelRecogniser:NoBoundingBoxes', 'Bounding Boxes could not be created since no text was detected. Try relaxing the filtering parameters.');
+            end
 
             %Seperate bounding box into seperate variables for manipulation
             roiX = ROIs(:, 1);
