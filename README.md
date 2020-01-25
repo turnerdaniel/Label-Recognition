@@ -19,7 +19,7 @@ This project requires MATLAB, a proprietary language developed by MathWorks, for
 
 2. Download the `Label-Recognition.mlappinstall` file.
 
-3. Open the file and follow the installation instructions until it completes.
+3. Open the file and follow the instructions until installation completes.
 
 ### Class
 
