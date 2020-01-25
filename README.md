@@ -2,20 +2,20 @@
 
 Label Recognition provides a MATLAB application that is capable of recognising expiry dates within a natural image and displaying them back to the user.
 
-The application utillises a fully-documented class, `LabelRecogniser`, that implements the expiry date detection and recognition algorithm that is provided with this repository. 
+The application utilises a fully documented class, `LabelRecogniser`, that implements the expiry date detection and recognition algorithm that is provided with this repository. 
 
 ## Prerequisites
 
-This project requires MATLAB, a proprietary langauage developed by MathWorks, for execution. 
+This project requires MATLAB, a proprietary language developed by MathWorks, for execution. 
 
-**It is recommended to use the latest stable release of MATLAB**. The performance of releases preceding MATLAB 2018a is not guranteed.
+**It is recommended to use the latest stable release of MATLAB**. The performance of releases preceding MATLAB 2018a is not guaranteed.
 
 *Please check with your institution/organisation to see if you are offered a free MATLAB license. Otherwise, see the [licensing options](https://www.mathworks.com/pricing-licensing.html) available.*
 
 ## Installation
 ### Application
 
-1. Navigate to [latest release](https://github.com/turnerdaniel/Label-Recognition/releases/latest) of this repository.
+1. Navigate to the [latest release](https://github.com/turnerdaniel/Label-Recognition/releases/latest) of this repository.
 
 2. Download the `Label Recognition.mlappinstall` file.
 
@@ -23,7 +23,7 @@ This project requires MATLAB, a proprietary langauage developed by MathWorks, fo
 
 ### Class
 
-1. Extract the zip file or clone the repository into a desired directory.
+1. Extract the zip file or clone the repository into the desired directory.
 
 2. Add the parent directory (Label-Recognition) to the path by:
     * Going to Home &rarr; Environment &rarr; Set Path, or
@@ -32,7 +32,7 @@ This project requires MATLAB, a proprietary langauage developed by MathWorks, fo
 
 3. Use in your own MATLAB code.
 
-*Note: Seperating the `LabelRecogniser.m` file into its own directory may improve path performance.*
+*Note: Separating the `LabelRecogniser.m` file into its own directory may improve path performance.*
 
 ## Usage
 ### Application
@@ -49,11 +49,11 @@ This project requires MATLAB, a proprietary langauage developed by MathWorks, fo
     - Viewing recognised dates
     - Outputting dates to a file
 
-*Auto-Reflow* is used to ensure that the app optimally scales to the desired screen size.
+Auto-Reflow is used to ensure that the app optimally scales to the desired screen size.
 
 ### Class
 
-1. Initialise a `LabelRecogniser` object with an image. This can be either a filepath or an image matrix.
+1. Initialise a `LabelRecogniser` object with an image. This can be either a file path or an image matrix.
 
     ```MATLAB
     lr = LabelRecogniser('samples/good1.jpeg');
@@ -91,15 +91,15 @@ doc LabelRecogniser
 
 ![GUI Example](https://user-images.githubusercontent.com/35703802/73096390-957dd380-3edc-11ea-826f-2104e02ddd57.png "GUI Example")
 
-Above shows the MATLAB app successfully identifying the expiry date from an image.
+Fig 1: MATLAB app successfully identifying the expiry date from an image.
 
 ![GUI Auto-Reflow](https://user-images.githubusercontent.com/35703802/73096391-957dd380-3edc-11ea-9b77-c4f500591181.png "GUI Auto-Reflow")
 
-Above shows the MATLAB app automatically reflowing content to fit onto a smaller screen.
+Fig 2: MATLAB app automatically reflowing content to fit onto a smaller screen.
 
 ![GUI Error Reporting](https://user-images.githubusercontent.com/35703802/73096392-957dd380-3edc-11ea-9cf9-f6379f626c0b.png "GUI Error Reporting")
 
-Above shows clear error messages being produced which suggest possible fixes when something goes wrong.
+Fig 3: MATLAB app displaying Clear error messages that suggest possible fixes.
 
 Alternatively, a demonstration of the `LabelRecogniser` class functionality is provided by the `main.m` script. Execute it in the Command Window using:
 
@@ -109,11 +109,11 @@ main
 
 ## Standalone Executable
 
-A standalone executable version of this project was planned to allow non-MATLAB users to utilise the system. However, due to unforseen complications relating to C/C++ code generation, this is no longer being developed.
+A standalone executable version of this project was planned to allow non-MATLAB users to make use of the system. However, due to unforeseen complications relating to C/C++ code generation, this task will take longer than expected.
 
-This is due to several functions being used such as `wiener2`, `detectMSERFeatures`, `imresize`, `imcrop`, `ocr`, etc. all having several quirks that will require a major rework of the `LabelRecogniser` class due to incompatabilities with MATLAB Compiler.
+This is due to several functions such as `wiener2`, `detectMSERFeatures`, `imresize`, `imcrop` and `ocr` having  quirks that will require a major rework of the `LabelRecogniser` class due to incompatibilities with the MATLAB Compiler.
 
-More details on the exact changes required can be found [here](https://mathworks.com/help/vision/ug/code-generation-support-usage-notes-and-limitations-for-functions-classes-and-system-objects.html).
+Additional details for this problem can be found on the [issues](https://github.com/turnerdaniel/Label-Recognition/issues/9) page. Any contribution will be greatly appreciated.
 
 ## Author
 
@@ -125,4 +125,4 @@ Daniel Turner - [turnerdaniel](https://github.com/turnerdaniel/)
 Li, Y. and Lu, H. (2012) Scene Text Detection via Stroke Width. In: 21st International Conference on Pattern Recognition (ICPR 2012), Tsukuba, Japan, 11-15 November. IEEE, 681–684. Available from https://ieeexplore.ieee.org/document/6460226 [accessed February 2019].
 
 ##### Candidate Text Grouping Algorithm:
-Mathworks (2019) Automatically Detect and Recognize Text in Natural Images. Available from https://uk.mathworks.com/help/vision/examples/automatically-detect-and-recognize-text-in-natural-images.html [accessed February 2019].
+MathWorks (2019) Automatically Detect and Recognize Text in Natural Images. Available from https://uk.mathworks.com/help/vision/examples/automatically-detect-and-recognize-text-in-natural-images.html [accessed February 2019].
