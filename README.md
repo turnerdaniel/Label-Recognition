@@ -17,7 +17,7 @@ This project requires MATLAB, a proprietary language developed by MathWorks, for
 
 1. Navigate to the [latest release](https://github.com/turnerdaniel/Label-Recognition/releases/latest) of this repository.
 
-2. Download the `Label Recognition.mlappinstall` file.
+2. Download the `Label-Recognition.mlappinstall` file.
 
 3. Open the file and follow the installation instructions until it completes.
 
